@@ -4,7 +4,7 @@ import { useMemo, useCallback } from 'react';
 import type { Feature } from 'geojson';
 import { isoBoundaries, utilityBoundaries } from '../data/geojson';
 import type { UtilityData, FilterState } from '../types';
-import { PV_TIER_COLORS, ISO_RTO_COLORS, formatCurrency } from '../utils/constants';
+import { PV_TIER_COLORS, formatCurrency } from '../utils/constants';
 
 interface Props {
   filters: FilterState;
@@ -12,8 +12,6 @@ interface Props {
   utilities: UtilityData[];
   onUtilityClick: (utility: UtilityData) => void;
 }
-
-// Component to fit bounds on filter change
 
 export default function MapView({ filters, filteredUtilities, utilities, onUtilityClick }: Props) {
   const filteredIds = useMemo(
@@ -27,19 +25,19 @@ export default function MapView({ filters, filteredUtilities, utilities, onUtili
     return m;
   }, [utilities]);
 
-  // ISO style
+  // ISO style — same blue fill, thick dashed outline
   const isoStyle = useCallback((feature?: Feature): PathOptions => {
     const iso = feature?.properties?.iso as string;
-    const color = ISO_RTO_COLORS[iso] ?? ISO_RTO_COLORS['non-ISO'];
     const dimmed = filters.isoFilter !== 'all' && filters.isoFilter !== iso;
     return {
-      fillColor: color,
-      fillOpacity: dimmed ? 0.05 : filters.opacity.iso,
-      color: color,
-      weight: 2,
-      opacity: dimmed ? 0.2 : 0.8,
+      fillColor: '#3B82F6',
+      fillOpacity: dimmed ? 0.02 : 0.08,
+      color: '#2563EB',
+      weight: 3,
+      opacity: dimmed ? 0.15 : 0.7,
+      dashArray: '8 6',
     };
-  }, [filters.isoFilter, filters.opacity.iso]);
+  }, [filters.isoFilter]);
 
   // Utility style
   const utilityStyle = useCallback((feature?: Feature): PathOptions => {
@@ -52,12 +50,12 @@ export default function MapView({ filters, filteredUtilities, utilities, onUtili
     const color = PV_TIER_COLORS[tier]?.color ?? '#BDBDBD';
     return {
       fillColor: color,
-      fillOpacity: filters.opacity.utilities,
+      fillOpacity: 0.85,
       color: '#ffffff',
       weight: 2,
       opacity: 1,
     };
-  }, [utilityMap, filteredIds, filters.opacity.utilities]);
+  }, [utilityMap, filteredIds]);
 
   // Utility hover/click handlers
   const onEachUtility = useCallback((feature: Feature, layer: Layer) => {
@@ -85,9 +83,8 @@ export default function MapView({ filters, filteredUtilities, utilities, onUtili
     });
   }, [utilityMap, filteredIds, utilityStyle, onUtilityClick]);
 
-  // Keys to force re-render when filters change
-  const isoKey = `iso-${filters.isoFilter}-${filters.opacity.iso}`;
-  const utilKey = `util-${[...filteredIds].join(',')}-${filters.opacity.utilities}`;
+  const isoKey = `iso-${filters.isoFilter}`;
+  const utilKey = `util-${[...filteredIds].join(',')}`;
 
   return (
     <MapContainer
@@ -102,7 +99,7 @@ export default function MapView({ filters, filteredUtilities, utilities, onUtili
         url="https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png"
       />
 
-      {/* Layer 1: ISO/RTO regions */}
+      {/* ISO/RTO regions */}
       {filters.layers.iso && (
         <GeoJSON
           key={isoKey}
@@ -144,7 +141,6 @@ export default function MapView({ filters, filteredUtilities, utilities, onUtili
         url="https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png"
         pane="tooltipPane"
       />
-
     </MapContainer>
   );
 }

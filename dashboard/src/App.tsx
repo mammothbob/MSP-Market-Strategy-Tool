@@ -11,8 +11,8 @@ import { formatCurrency } from './utils/constants';
 
 function App() {
   const {
-    filters, filteredUtilities, availableStates,
-    toggleLayer, setIsoFilter, setStateFilter,
+    filters, filteredUtilities,
+    toggleLayer, setIsoFilter,
     toggleNpvTier, toggleMarketType, resetFilters,
   } = useFilters(utilities);
 
@@ -62,10 +62,8 @@ function App() {
         {/* Left sidebar */}
         <FilterSidebar
           filters={filters}
-          availableStates={availableStates}
           toggleLayer={toggleLayer}
           setIsoFilter={setIsoFilter}
-          setStateFilter={setStateFilter}
           toggleNpvTier={toggleNpvTier}
           toggleMarketType={toggleMarketType}
           resetFilters={resetFilters}

@@ -1,12 +1,10 @@
 import type { FilterState, IsoRto } from '../types';
-import { PV_TIER_COLORS, ISO_RTO_COLORS, MARKET_TYPE_LABELS } from '../utils/constants';
+import { PV_TIER_COLORS, MARKET_TYPE_LABELS } from '../utils/constants';
 
 interface Props {
   filters: FilterState;
-  availableStates: string[];
   toggleLayer: (layer: keyof FilterState['layers']) => void;
   setIsoFilter: (iso: IsoRto | 'all') => void;
-  setStateFilter: (state: string) => void;
   toggleNpvTier: (tier: number) => void;
   toggleMarketType: (type: string) => void;
   resetFilters: () => void;
@@ -21,8 +19,8 @@ const ISO_OPTIONS: { value: IsoRto | 'all'; label: string }[] = [
 ];
 
 export default function FilterSidebar({
-  filters, availableStates,
-  toggleLayer, setIsoFilter, setStateFilter,
+  filters,
+  toggleLayer, setIsoFilter,
   toggleNpvTier, toggleMarketType, resetFilters,
 }: Props) {
   return (
@@ -37,11 +35,6 @@ export default function FilterSidebar({
           label="ISO/RTO Regions"
           checked={filters.layers.iso}
           onChange={() => toggleLayer('iso')}
-        />
-        <LayerToggle
-          label="State Boundaries"
-          checked={filters.layers.states}
-          onChange={() => toggleLayer('states')}
         />
         <LayerToggle
           label="Utility Territories"
@@ -64,29 +57,12 @@ export default function FilterSidebar({
               }`}
             >
               {opt.value !== 'all' && (
-                <span
-                  className="inline-block w-3 h-3 rounded-sm border border-blue-200"
-                  style={{ backgroundColor: ISO_RTO_COLORS[opt.value] }}
-                />
+                <span className="inline-block w-4 h-0 border-t-2 border-dashed border-blue-500" />
               )}
               {opt.label}
             </button>
           ))}
         </div>
-      </Section>
-
-      {/* State filter */}
-      <Section title="State">
-        <select
-          value={filters.stateFilter}
-          onChange={(e) => setStateFilter(e.target.value)}
-          className="w-full text-sm border border-gray-300 rounded px-2 py-1.5"
-        >
-          <option value="all">All States</option>
-          {availableStates.map(s => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
       </Section>
 
       {/* PV Revenue Tier */}

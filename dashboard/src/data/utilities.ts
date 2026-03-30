@@ -123,22 +123,104 @@ const rawUtilities: UtilityData[] = [
     state: "Illinois",
     state_abbr: "IL",
     iso_rto: "PJM",
-    market_type: "contract_based",
-    inclusion_rationale: "VPP tariff pending + PJM DERA + CRGA potential",
+    market_type: "merchant_incentive",
+    inclusion_rationale: "IL rebate + ITC + PJM DERA + VPP dispatch",
     revenue: {
-      utility_procurement: {
-        value: 165,
-        source: "ComEd VPP tariff (estimated, pending ICC approval)",
-        contract_term_years: 15,
-        escalation_rate: 0.02,
-        status: "ICC decision expected June 30, 2026"
-      },
-      iso_capacity_market: { value: 50, source: "PJM BRA", erosion_rate: -0.02 },
-      energy_arbitrage: { value: 35, source: "PJM LMP spreads", erosion_rate: -0.05 },
-      ancillary_services: { value: 25, source: "PJM regulation", erosion_rate: -0.03 },
-      state_incentives: { value: 0, programs: ["CRGA (pending IPA Round 1)"] },
-      total_contracted_period: 165,
-      total_merchant_period: 110
+      utility_procurement: null,
+      iso_capacity_market: { value: 0 },
+      energy_arbitrage: { value: 0 },
+      ancillary_services: { value: 0 },
+      state_incentives: { value: 0, programs: [] },
+      total_contracted_period: 0,
+      total_merchant_period: 0
+    },
+    revenue_v2: {
+      one_time_total: 8000000,
+      first_year_total_annual: 1574000,
+      streams: [
+        {
+          name: "Federal ITC (48E)",
+          category: "tax_credit",
+          type: "one_time",
+          color: "#22C55E",
+          amount: 3000000,
+          timing: "cod",
+          notes: "30% of ~$10M project cost; transferable; FEOC risk"
+        },
+        {
+          name: "5-Year MACRS",
+          category: "tax_credit",
+          type: "one_time",
+          color: "#86EFAC",
+          amount: 500000,
+          timing: "cod",
+          notes: "Additive to ITC; tax-position dependent; ~$500K PV"
+        },
+        {
+          name: "Illinois Rebate",
+          category: "rebate",
+          type: "one_time",
+          color: "#F97316",
+          amount: 5000000,
+          timing: "development",
+          notes: "Statutory floor; apply at IA execution"
+        },
+        {
+          name: "RPM Capacity (DERA)",
+          category: "capacity",
+          type: "annual",
+          color: "#3B82F6",
+          near_term_annual: 400000,
+          long_term_annual: 250000,
+          trend: "declining",
+          annual_growth_rate: -0.03,
+          notes: "First eligible DY 2028/29; ELCC uncertainty; range $304–502K"
+        },
+        {
+          name: "Regulation",
+          category: "regulation",
+          type: "annual",
+          color: "#06B6D4",
+          near_term_annual: 1000000,
+          long_term_annual: 375000,
+          trend: "declining",
+          annual_growth_rate: -0.05,
+          notes: "Saturation risk from fleet growth; range $250–500K long-term"
+        },
+        {
+          name: "Energy Arbitrage",
+          category: "arbitrage",
+          type: "annual",
+          color: "#A855F7",
+          near_term_annual: 220000,
+          long_term_annual: 300000,
+          trend: "growing",
+          annual_growth_rate: 0.02,
+          notes: "ComEd zone weak; 2x worse than BGE/DOM"
+        },
+        {
+          name: "VPP Scheduled Dispatch",
+          category: "vpp",
+          type: "annual",
+          color: "#DC2626",
+          near_term_annual: 50000,
+          long_term_annual: 50000,
+          trend: "stable",
+          annual_growth_rate: 0,
+          notes: "Voluntary; floor only; ICC rate TBD"
+        },
+        {
+          name: "VPP Long-Term Additive",
+          category: "vpp",
+          type: "annual",
+          color: "#FCA5A5",
+          near_term_annual: 0,
+          long_term_annual: 0,
+          trend: "tbd",
+          annual_growth_rate: 0,
+          notes: "Locational value; ICC 2028 proceeding"
+        }
+      ]
     },
     costs: {
       capex_base: 2379, capex_total: 2498,
@@ -157,7 +239,7 @@ const rawUtilities: UtilityData[] = [
       regulatory_posture: { category: "neutral", npv_multiplier: 1.0 }
     },
     risks: {
-      regulatory_uncertainty: { description: "IL ISO departure study pending; VPP tariff approval uncertain", npv_haircut: 0.15 },
+      regulatory_uncertainty: { description: "IL ISO departure study pending; VPP tariff approval uncertain", npv_haircut: 0 },
       discount_rate: 0.07
     },
     pv_results: { pv_total: 0, pv_tier: 5 as const },

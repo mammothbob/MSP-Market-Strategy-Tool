@@ -36,6 +36,32 @@ export interface Revenue {
   total_merchant_period: number;
 }
 
+// ── New flexible revenue model ──────────────────────────────────────────
+export interface RevenueStream {
+  name: string;
+  category: 'tax_credit' | 'rebate' | 'capacity' | 'regulation' | 'arbitrage' | 'vpp' | 'other';
+  type: 'one_time' | 'annual';
+  color: string;
+
+  // One-time items
+  amount?: number;          // $ total for 5 MW project
+  timing?: 'development' | 'cod';  // when it hits
+
+  // Annual items ($ total for 5 MW project per year)
+  near_term_annual?: number;
+  long_term_annual?: number;  // stabilized level (if different)
+  trend?: 'declining' | 'growing' | 'stable' | 'tbd';
+  annual_growth_rate?: number; // positive = growing, negative = declining
+
+  notes?: string;
+}
+
+export interface RevenueStackV2 {
+  streams: RevenueStream[];
+  first_year_total_annual: number;  // $ total annual revenue, year 1 of ops
+  one_time_total: number;           // $ total one-time items
+}
+
 export interface Costs {
   capex_base: number;
   capex_total: number;
@@ -90,6 +116,7 @@ export interface UtilityData {
   market_type: 'contract_based' | 'merchant_incentive' | 'pure_merchant';
   inclusion_rationale: string;
   revenue: Revenue;
+  revenue_v2?: RevenueStackV2;  // New flexible model (used when present)
   costs: Costs;
   state_factors: StateFactors;
   utility_factors: UtilityFactors;

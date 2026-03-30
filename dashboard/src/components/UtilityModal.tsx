@@ -19,14 +19,10 @@ const COST_COLORS = {
   augmentation: '#FBBF24',
 };
 
-const REV_COLORS = {
-  utilityProcurement: '#DC2626',
-  capacity: '#3B82F6',
-  arbitrage: '#A855F7',
-  ancillary: '#06B6D4',
-  stateIncentive: '#22C55E',
-  demandResponse: '#F97316',
-};
+// Default colors for revenue streams (used when v2 streams don't specify)
+const DEFAULT_STREAM_COLORS = [
+  '#22C55E', '#3B82F6', '#06B6D4', '#A855F7', '#DC2626', '#F97316', '#86EFAC', '#FCA5A5',
+];
 
 const fmtK = (v: number) => {
   if (Math.abs(v) >= 1000) return `$${(v / 1000).toFixed(1)}M`;
@@ -35,21 +31,57 @@ const fmtK = (v: number) => {
 
 export default function UtilityModal({ utility, onClose }: Props) {
   const u = utility;
-  const rev = u.revenue;
   const tierColor = PV_TIER_COLORS[u.pv_results.pv_tier];
   const timeline = useMemo(() => generateProjectTimeline(u), [u]);
 
-  // Determine which revenue labels to show based on what's nonzero
-  const hasUtilityProcurement = rev.utility_procurement !== null;
-  const hasCapacity = !!(rev.iso_capacity_market?.value);
-  const hasArbitrage = !!(rev.energy_arbitrage?.value);
-  const hasAncillary = !!(rev.ancillary_services?.value);
-  const hasStateIncentive = !!(rev.state_incentives?.value);
-  const hasDR = !!(rev.demand_response?.value);
+  // Collect all unique revenue stream names from the timeline
+  const streamNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const row of timeline) {
+      for (const key of Object.keys(row.revenueByStream)) {
+        names.add(key);
+      }
+    }
+    return [...names];
+  }, [timeline]);
 
-  // COD year index for reference line
+  // Build color map for streams
+  const streamColors = useMemo(() => {
+    const colors: Record<string, string> = {};
+    if (u.revenue_v2) {
+      for (const s of u.revenue_v2.streams) {
+        colors[s.name] = s.color;
+      }
+    }
+    // Assign default colors to any streams not in v2
+    let ci = 0;
+    for (const name of streamNames) {
+      if (!colors[name]) {
+        colors[name] = DEFAULT_STREAM_COLORS[ci % DEFAULT_STREAM_COLORS.length];
+        ci++;
+      }
+    }
+    return colors;
+  }, [u.revenue_v2, streamNames]);
+
+  // Flatten revenueByStream into chart-friendly data
+  const chartData = useMemo(() => {
+    return timeline.map(row => ({
+      ...row,
+      ...row.revenueByStream,
+    }));
+  }, [timeline]);
+
   const codIdx = timeline.findIndex(d => d.phase === 'operations');
   const codYear = codIdx >= 0 ? timeline[codIdx].calendarYear : undefined;
+
+  // Revenue summary table (from v2 streams or legacy)
+  const revenueTable = useMemo(() => {
+    if (u.revenue_v2) {
+      return u.revenue_v2.streams.filter(s => (s.amount ?? 0) > 0 || (s.near_term_annual ?? 0) > 0);
+    }
+    return null;
+  }, [u.revenue_v2]);
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4" onClick={onClose}>
@@ -102,7 +134,7 @@ export default function UtilityModal({ utility, onClose }: Props) {
               <span className="text-gray-400">--- Cost range</span>
             </div>
             <ResponsiveContainer width="100%" height={200}>
-              <ComposedChart data={timeline} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="calendarYear" tick={{ fontSize: 10 }} interval={2} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={fmtK} />
@@ -118,35 +150,28 @@ export default function UtilityModal({ utility, onClose }: Props) {
             </ResponsiveContainer>
           </div>
 
-          {/* Chart 2: Annual Revenue */}
+          {/* Chart 2: Annual Revenue (dynamic streams) */}
           <div>
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
               2 · Annual Revenue ($K)
             </h3>
             <div className="flex items-center gap-4 text-xs text-gray-500 mb-1 flex-wrap">
-              {hasStateIncentive && <LegendDot color={REV_COLORS.stateIncentive} label="ITC + State incentive" />}
-              {!hasStateIncentive && <LegendDot color={REV_COLORS.stateIncentive} label="ITC" />}
-              {hasCapacity && <LegendDot color={REV_COLORS.capacity} label={`${u.iso_rto} capacity`} />}
-              {hasAncillary && <LegendDot color={REV_COLORS.ancillary} label="Regulation" />}
-              {hasArbitrage && <LegendDot color={REV_COLORS.arbitrage} label={`Arbitrage (${u.utility_short_name})`} />}
-              {hasUtilityProcurement && <LegendDot color={REV_COLORS.utilityProcurement} label={rev.utility_procurement!.source.split('(')[0].trim()} />}
-              {hasDR && <LegendDot color={REV_COLORS.demandResponse} label={rev.demand_response?.programs?.[0] ?? 'DR'} />}
+              {streamNames.map(name => (
+                <LegendDot key={name} color={streamColors[name]} label={name} />
+              ))}
               <span className="text-gray-400">--- Revenue range</span>
             </div>
             <ResponsiveContainer width="100%" height={200}>
-              <ComposedChart data={timeline} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="calendarYear" tick={{ fontSize: 10 }} interval={2} />
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={fmtK} />
                 <Tooltip formatter={(v) => fmtK(Number(v))} labelFormatter={(l) => `Year ${l}`} />
                 <Area dataKey="revRangeHigh" stroke="none" fill="#BBF7D0" fillOpacity={0.3} />
                 <Area dataKey="revRangeLow" stroke="none" fill="#fff" fillOpacity={1} />
-                <Bar dataKey="revStateIncentive" stackId="rev" fill={REV_COLORS.stateIncentive} />
-                {hasCapacity && <Bar dataKey="revCapacity" stackId="rev" fill={REV_COLORS.capacity} />}
-                {hasAncillary && <Bar dataKey="revAncillary" stackId="rev" fill={REV_COLORS.ancillary} />}
-                {hasArbitrage && <Bar dataKey="revArbitrage" stackId="rev" fill={REV_COLORS.arbitrage} />}
-                {hasUtilityProcurement && <Bar dataKey="revUtilityProcurement" stackId="rev" fill={REV_COLORS.utilityProcurement} />}
-                {hasDR && <Bar dataKey="revDemandResponse" stackId="rev" fill={REV_COLORS.demandResponse} />}
+                {streamNames.map(name => (
+                  <Bar key={name} dataKey={name} stackId="rev" fill={streamColors[name]} />
+                ))}
                 {codYear && <ReferenceLine x={codYear} stroke="#999" strokeDasharray="3 3" />}
               </ComposedChart>
             </ResponsiveContainer>
@@ -163,7 +188,7 @@ export default function UtilityModal({ utility, onClose }: Props) {
               <span className="text-amber-500">--- Cumulative (right)</span>
             </div>
             <ResponsiveContainer width="100%" height={220}>
-              <ComposedChart data={timeline} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="calendarYear" tick={{ fontSize: 10 }} interval={2} />
                 <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickFormatter={fmtK} />
@@ -179,62 +204,84 @@ export default function UtilityModal({ utility, onClose }: Props) {
             </ResponsiveContainer>
           </div>
 
-          {/* Utility-specific assumptions */}
+          {/* Revenue Summary Table */}
           <div className="border-t border-gray-200 pt-4">
             <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
-              Utility-Specific Assumptions
+              Summary Revenue Stack
             </h3>
-
-            <div className="text-sm">
-              <h4 className="font-semibold text-gray-900 mb-2">Revenue Stack ($/kW-yr)</h4>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
-                {hasUtilityProcurement && (
-                  <AssumptionRow
-                    label={rev.utility_procurement!.source.split('(')[0].trim()}
-                    value={`$${rev.utility_procurement!.value}`}
-                    detail={`${rev.utility_procurement!.contract_term_years}yr term, ${(rev.utility_procurement!.escalation_rate * 100).toFixed(1)}% esc.`}
-                  />
-                )}
-                {hasCapacity && <AssumptionRow label={`${u.iso_rto} capacity`} value={`$${rev.iso_capacity_market.value}`} detail={`${((rev.iso_capacity_market.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
-                {hasArbitrage && <AssumptionRow label="Energy arbitrage" value={`$${rev.energy_arbitrage.value}`} detail={`${((rev.energy_arbitrage.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
-                {hasAncillary && <AssumptionRow label="Ancillary services" value={`$${rev.ancillary_services.value}`} detail={`${((rev.ancillary_services.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
-                {hasStateIncentive && <AssumptionRow label="State incentives" value={`$${rev.state_incentives.value}`} detail={rev.state_incentives.programs?.join(', ')} />}
-                {hasDR && <AssumptionRow label={rev.demand_response?.programs?.[0] ?? 'DR'} value={`$${rev.demand_response!.value}`} detail={rev.demand_response?.notes} />}
+            {revenueTable ? (
+              /* V2: structured table matching user's format */
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-xs text-gray-500 uppercase">
+                      <th className="text-left py-2 pr-4 font-semibold">Revenue Stream</th>
+                      <th className="text-right py-2 px-3 font-semibold">One-Time</th>
+                      <th className="text-right py-2 px-3 font-semibold">Annual (Near)</th>
+                      <th className="text-right py-2 px-3 font-semibold">Annual (Long)</th>
+                      <th className="text-left py-2 pl-3 font-semibold">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {u.revenue_v2!.streams.map((s, i) => (
+                      <tr key={i} className="border-b border-gray-50">
+                        <td className="py-2 pr-4 font-medium text-gray-900 flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
+                          {s.name}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          {s.type === 'one_time' && s.amount ? formatCurrency(s.amount) : '—'}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          {s.type === 'annual' && (s.near_term_annual ?? 0) > 0 ? formatCurrency(s.near_term_annual!) : s.type === 'one_time' ? '—' : '—'}
+                        </td>
+                        <td className="text-right py-2 px-3 text-gray-700">
+                          {s.type === 'annual' && s.trend === 'tbd' ? 'TBD' :
+                           s.type === 'annual' && (s.long_term_annual ?? 0) > 0 ? `~${formatCurrency(s.long_term_annual!)}` :
+                           s.type === 'annual' && s.trend ? s.trend.charAt(0).toUpperCase() + s.trend.slice(1) :
+                           '—'}
+                        </td>
+                        <td className="text-left py-2 pl-3 text-xs text-gray-500">{s.notes ?? ''}</td>
+                      </tr>
+                    ))}
+                    {/* Total row */}
+                    <tr className="border-t-2 border-gray-300 font-semibold">
+                      <td className="py-2 pr-4 text-gray-900">TOTAL (first year of ops)</td>
+                      <td className="text-right py-2 px-3 text-gray-900">~{formatCurrency(u.revenue_v2!.one_time_total)}</td>
+                      <td className="text-right py-2 px-3 text-gray-900">~{formatCurrency(u.revenue_v2!.first_year_total_annual)}</td>
+                      <td className="text-right py-2 px-3 text-gray-500">Declining + stabilizing</td>
+                      <td className="text-left py-2 pl-3 text-xs text-gray-400">Excludes MACRS PV benefit</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
-            </div>
-
-            {/* State & utility factors */}
-            <div className="mt-4">
-              <h4 className="font-semibold text-gray-900 mb-2 text-sm">Modifiers Applied</h4>
-              <div className="flex flex-wrap gap-2">
-                {u.state_factors.storage_mandate.exists && (
-                  <ModifierBadge label={`Storage mandate: ${u.state_factors.storage_mandate.target_mw}MW by ${u.state_factors.storage_mandate.target_year}`} multiplier={u.state_factors.storage_mandate.npv_multiplier} />
-                )}
-                {u.state_factors.tax_incentives.npv_multiplier !== 1.0 && (
-                  <ModifierBadge label="Tax incentives" multiplier={u.state_factors.tax_incentives.npv_multiplier} />
-                )}
-                {u.state_factors.labor_requirements.npv_multiplier !== 1.0 && (
-                  <ModifierBadge label={u.state_factors.labor_requirements.prevailing_wage ? 'Prevailing wage' : 'Labor requirements'} multiplier={u.state_factors.labor_requirements.npv_multiplier} />
-                )}
-                {u.state_factors.permitting.npv_multiplier !== 1.0 && (
-                  <ModifierBadge label="Permitting" multiplier={u.state_factors.permitting.npv_multiplier} />
-                )}
-                {u.utility_factors.interconnection_quality.npv_multiplier !== 1.0 && (
-                  <ModifierBadge label={`IX Tier ${u.utility_factors.interconnection_quality.tier}`} multiplier={u.utility_factors.interconnection_quality.npv_multiplier} />
-                )}
-                {u.utility_factors.regulatory_posture.npv_multiplier !== 1.0 && (
-                  <ModifierBadge label={`Regulatory: ${u.utility_factors.regulatory_posture.category}`} multiplier={u.utility_factors.regulatory_posture.npv_multiplier} />
-                )}
-                {u.risks.regulatory_uncertainty.npv_haircut > 0 && (
-                  <ModifierBadge label="Regulatory risk" multiplier={1 - u.risks.regulatory_uncertainty.npv_haircut} />
-                )}
+            ) : (
+              /* Legacy: simple list */
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
+                {streamNames.map(name => {
+                  // Find first non-zero value in timeline for this stream
+                  const firstVal = timeline.find(r => (r.revenueByStream[name] ?? 0) > 0);
+                  return (
+                    <div key={name} className="flex justify-between items-center">
+                      <span className="text-gray-600 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: streamColors[name] }} />
+                        {name}
+                      </span>
+                      <span className="font-medium text-gray-900">
+                        {firstVal ? fmtK(firstVal.revenueByStream[name]) + '/yr' : '—'}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
-            </div>
+            )}
+          </div>
 
-            {/* Development context */}
-            <div className="mt-4 grid grid-cols-2 gap-6 text-sm">
+          {/* Development context */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="grid grid-cols-2 gap-6 text-sm">
               <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Development Status</h4>
+                <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Development Status</h4>
                 <div className="text-gray-700 space-y-1">
                   <div><span className="text-gray-500">Active RFP:</span> {u.development_status.active_rfp}</div>
                   <div><span className="text-gray-500">Mammoth sites:</span> {u.development_status.mammoth_sites}</div>
@@ -243,7 +290,7 @@ export default function UtilityModal({ utility, onClose }: Props) {
               </div>
               {u.development_status.key_dates && u.development_status.key_dates.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Key Dates</h4>
+                  <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Key Dates</h4>
                   <div className="space-y-1">
                     {u.development_status.key_dates.map((d, i) => (
                       <div key={i} className="text-xs flex gap-2">
@@ -257,13 +304,9 @@ export default function UtilityModal({ utility, onClose }: Props) {
             </div>
           </div>
 
-          {/* Bottom assumptions note */}
+          {/* Assumptions footnote */}
           <div className="text-xs text-gray-400 border-t border-gray-100 pt-3">
-            Assumptions: COD {codYear} · ITC 30% x {formatCurrency(u.costs.capex_total * 5000)} capex
-            {rev.utility_procurement && ` · ${rev.utility_procurement.source}`}
-            {hasCapacity && ` · ${u.iso_rto} capacity $${rev.iso_capacity_market.value}/kW-yr`}
-            {hasDR && ` · ${rev.demand_response?.programs?.[0]} $${rev.demand_response?.value}/kW-yr`}
-            · Confidence bands: capex ±15%, merchant revenues ±25%
+            Assumptions: COD {codYear} · Discount rate 7% · Confidence bands: capex ±15%, revenues ±25%
           </div>
         </div>
 
@@ -287,28 +330,6 @@ function LegendDot({ color, label }: { color: string; label: string }) {
     <span className="flex items-center gap-1">
       <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: color }} />
       {label}
-    </span>
-  );
-}
-
-function AssumptionRow({ label, value, detail }: { label: string; value: string; detail?: string }) {
-  return (
-    <div>
-      <div className="flex justify-between">
-        <span className="text-gray-600">{label}</span>
-        <span className="font-medium text-gray-900">{value}</span>
-      </div>
-      {detail && <div className="text-xs text-gray-400">{detail}</div>}
-    </div>
-  );
-}
-
-function ModifierBadge({ label, multiplier }: { label: string; multiplier: number }) {
-  const pct = ((multiplier - 1) * 100);
-  const isPositive = pct >= 0;
-  return (
-    <span className={`text-xs px-2 py-1 rounded-full ${isPositive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
-      {label}: {isPositive ? '+' : ''}{pct.toFixed(0)}%
     </span>
   );
 }

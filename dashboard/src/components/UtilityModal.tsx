@@ -307,7 +307,6 @@ export default function UtilityModal({ utility, onClose }: Props) {
                     <h4 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Development Status</h4>
                     <div className="text-gray-700 space-y-1">
                       <div><span className="text-gray-500">Active RFP:</span> {u.development_status.active_rfp}</div>
-                      <div><span className="text-gray-500">Mammoth sites:</span> {u.development_status.mammoth_sites}</div>
                       {u.development_status.notes && <div className="text-gray-500 italic text-xs">{u.development_status.notes}</div>}
                     </div>
                   </div>

@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import type { UtilityData } from '../types';
-import { PV_TIER_COLORS, formatCurrency, MARKET_TYPE_LABELS, MARKET_TYPE_BADGE_COLORS } from '../utils/constants';
+import { formatCurrency, MARKET_TYPE_LABELS, MARKET_TYPE_BADGE_COLORS } from '../utils/constants';
 
 interface Props {
   filteredUtilities: UtilityData[];
@@ -8,26 +9,22 @@ interface Props {
 }
 
 export default function StatsSidebar({ filteredUtilities, allUtilities, onUtilityClick }: Props) {
-  const tierGroups = [1, 2, 3].map(tier => {
-    const inTier = filteredUtilities.filter(u => u.pv_results.pv_tier === tier);
-    const avg = inTier.length > 0
-      ? Math.round(inTier.reduce((s, u) => s + u.pv_results.pv_total, 0) / inTier.length)
-      : 0;
-    return { tier, count: inTier.length, avg };
-  });
+  const [showCalendar, setShowCalendar] = useState(false);
 
   const topUtilities = [...filteredUtilities]
     .sort((a, b) => b.pv_results.pv_total - a.pv_results.pv_total)
     .slice(0, 5);
 
-  const totalSites = filteredUtilities.reduce((s, u) => s + u.development_status.mammoth_sites, 0);
+  const tier1 = filteredUtilities.filter(u => u.pv_results.pv_tier === 1);
+  const avgTier1 = tier1.length > 0
+    ? Math.round(tier1.reduce((s, u) => s + u.pv_results.pv_total, 0) / tier1.length)
+    : 0;
 
   // Collect upcoming dates across all filtered utilities
   const upcomingDates = filteredUtilities
     .flatMap(u => (u.development_status.key_dates ?? []).map(d => ({ ...d, utility: u.utility_short_name })))
     .filter(d => d.date >= '2026-03-30')
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 6);
+    .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
     <div className="w-72 bg-white border-l border-gray-200 overflow-y-auto flex flex-col">
@@ -40,36 +37,24 @@ export default function StatsSidebar({ filteredUtilities, allUtilities, onUtilit
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Utilities Shown" value={String(filteredUtilities.length)} />
           <Stat label="Total Modeled" value={String(allUtilities.length)} />
-          <Stat label="Pipeline Sites" value={String(totalSites)} />
           <Stat
             label="Avg PV Rev (Tier 1)"
-            value={tierGroups[0].count > 0 ? formatCurrency(tierGroups[0].avg) : '—'}
+            value={tier1.length > 0 ? formatCurrency(avgTier1) : '—'}
           />
-        </div>
-      </div>
-
-      {/* NPV distribution */}
-      <div className="p-4 border-b border-gray-100">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">PV Revenue Distribution</h3>
-        <div className="space-y-2">
-          {tierGroups.map(({ tier, count, avg }) => (
-            <div key={tier} className="flex items-center gap-2 text-sm">
-              <span
-                className="w-3 h-3 rounded-sm shrink-0"
-                style={{ backgroundColor: PV_TIER_COLORS[tier].color }}
-              />
-              <span className="text-gray-600 flex-1">Tier {tier}</span>
-              <span className="text-gray-500">{count}</span>
-              {count > 0 && (
-                <span className="text-gray-400 text-xs">avg {formatCurrency(avg)}</span>
-              )}
-            </div>
-          ))}
+          <div>
+            <button
+              onClick={() => setShowCalendar(true)}
+              className="text-lg font-bold text-blue-600 hover:text-blue-800 transition-colors"
+            >
+              {upcomingDates.length}
+            </button>
+            <div className="text-xs text-gray-500">Key Dates</div>
+          </div>
         </div>
       </div>
 
       {/* Top opportunities */}
-      <div className="p-4 border-b border-gray-100">
+      <div className="p-4">
         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Top Opportunities</h3>
         <div className="space-y-2">
           {topUtilities.map((u, i) => (
@@ -98,18 +83,46 @@ export default function StatsSidebar({ filteredUtilities, allUtilities, onUtilit
         </div>
       </div>
 
-      {/* Key dates */}
-      {upcomingDates.length > 0 && (
-        <div className="p-4">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Key Dates</h3>
-          <div className="space-y-2">
-            {upcomingDates.map((d, i) => (
-              <div key={i} className="text-sm">
-                <div className="text-xs text-gray-400">{formatDate(d.date)}</div>
-                <div className="text-gray-700">{d.event}</div>
-                <div className="text-xs text-gray-500">{d.utility}</div>
-              </div>
-            ))}
+      {/* Calendar popup */}
+      {showCalendar && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4" onClick={() => setShowCalendar(false)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div
+            className="relative bg-white rounded-xl shadow-2xl max-w-md w-full max-h-[70vh] overflow-y-auto"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-5 py-3 flex items-center justify-between rounded-t-xl">
+              <h2 className="text-sm font-bold text-gray-900">Key Dates</h2>
+              <button
+                onClick={() => setShowCalendar(false)}
+                className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-400 hover:text-gray-600"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-5 py-3">
+              {upcomingDates.length === 0 ? (
+                <p className="text-sm text-gray-400 italic">No upcoming dates.</p>
+              ) : (
+                <div className="space-y-3">
+                  {upcomingDates.map((d, i) => (
+                    <div key={i} className="flex gap-3 items-start">
+                      <div className="shrink-0 w-16 text-center">
+                        <div className="text-xs font-semibold text-blue-600 bg-blue-50 rounded px-1.5 py-1">
+                          {formatDateShort(d.date)}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-sm text-gray-900">{d.event}</div>
+                        <div className="text-xs text-gray-500">{d.utility}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -126,7 +139,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatDate(iso: string): string {
+function formatDateShort(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }

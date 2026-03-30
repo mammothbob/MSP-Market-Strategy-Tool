@@ -12,7 +12,7 @@ import { formatCurrency } from './utils/constants';
 function App() {
   const {
     filters, filteredUtilities, availableStates,
-    toggleLayer, setOpacity, setIsoFilter, setStateFilter,
+    toggleLayer, setIsoFilter, setStateFilter,
     toggleNpvTier, toggleMarketType, resetFilters,
   } = useFilters(utilities);
 
@@ -31,7 +31,6 @@ function App() {
   const avgTier1PV = tier1Utilities.length > 0
     ? Math.round(tier1Utilities.reduce((s, u) => s + u.pv_results.pv_total, 0) / tier1Utilities.length)
     : 0;
-  const totalSites = utilities.reduce((s, u) => s + u.development_status.mammoth_sites, 0);
 
   return (
     <div className="h-screen flex flex-col bg-gray-50">
@@ -39,7 +38,7 @@ function App() {
       <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-lg font-bold text-gray-900">
-            BESS Market Opportunity Dashboard
+            MSP Market Research Dashboard
           </h1>
           <p className="text-xs text-gray-500">
             Distribution-Connected 5 MW / 20 MWh Projects
@@ -48,7 +47,6 @@ function App() {
         <div className="flex items-center gap-6 text-sm">
           <HeaderStat label="Utilities Modeled" value={String(utilities.length)} />
           <HeaderStat label="Avg PV Rev (Tier 1)" value={formatCurrency(avgTier1PV)} />
-          <HeaderStat label="Pipeline Sites" value={String(totalSites)} />
           <button
             onClick={() => setShowBaseAssumptions(true)}
             className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded transition-colors"
@@ -66,7 +64,6 @@ function App() {
           filters={filters}
           availableStates={availableStates}
           toggleLayer={toggleLayer}
-          setOpacity={setOpacity}
           setIsoFilter={setIsoFilter}
           setStateFilter={setStateFilter}
           toggleNpvTier={toggleNpvTier}

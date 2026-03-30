@@ -5,7 +5,6 @@ interface Props {
   filters: FilterState;
   availableStates: string[];
   toggleLayer: (layer: keyof FilterState['layers']) => void;
-  setOpacity: (layer: keyof FilterState['opacity'], value: number) => void;
   setIsoFilter: (iso: IsoRto | 'all') => void;
   setStateFilter: (state: string) => void;
   toggleNpvTier: (tier: number) => void;
@@ -23,7 +22,7 @@ const ISO_OPTIONS: { value: IsoRto | 'all'; label: string }[] = [
 
 export default function FilterSidebar({
   filters, availableStates,
-  toggleLayer, setOpacity, setIsoFilter, setStateFilter,
+  toggleLayer, setIsoFilter, setStateFilter,
   toggleNpvTier, toggleMarketType, resetFilters,
 }: Props) {
   return (
@@ -39,25 +38,16 @@ export default function FilterSidebar({
           checked={filters.layers.iso}
           onChange={() => toggleLayer('iso')}
         />
-        {filters.layers.iso && (
-          <OpacitySlider
-            label="ISO Opacity"
-            value={filters.opacity.iso}
-            onChange={(v) => setOpacity('iso', v)}
-          />
-        )}
+        <LayerToggle
+          label="State Boundaries"
+          checked={filters.layers.states}
+          onChange={() => toggleLayer('states')}
+        />
         <LayerToggle
           label="Utility Territories"
           checked={filters.layers.utilities}
           onChange={() => toggleLayer('utilities')}
         />
-        {filters.layers.utilities && (
-          <OpacitySlider
-            label="Utility Opacity"
-            value={filters.opacity.utilities}
-            onChange={(v) => setOpacity('utilities', v)}
-          />
-        )}
       </Section>
 
       {/* ISO Filter */}
@@ -69,13 +59,13 @@ export default function FilterSidebar({
               onClick={() => setIsoFilter(opt.value)}
               className={`w-full text-left px-2 py-1 rounded text-sm flex items-center gap-2 ${
                 filters.isoFilter === opt.value
-                  ? 'bg-gray-100 font-semibold text-gray-900'
+                  ? 'bg-blue-50 font-semibold text-gray-900'
                   : 'text-gray-600 hover:bg-gray-50'
               }`}
             >
               {opt.value !== 'all' && (
                 <span
-                  className="inline-block w-3 h-3 rounded-sm"
+                  className="inline-block w-3 h-3 rounded-sm border border-blue-200"
                   style={{ backgroundColor: ISO_RTO_COLORS[opt.value] }}
                 />
               )}
@@ -99,10 +89,10 @@ export default function FilterSidebar({
         </select>
       </Section>
 
-      {/* NPV Tier */}
+      {/* PV Revenue Tier */}
       <Section title="PV Revenue Tier">
         <div className="space-y-1">
-          {[1, 2, 3].map(tier => (
+          {[1, 2, 3, 4].map(tier => (
             <label key={tier} className="flex items-center gap-2 text-sm cursor-pointer">
               <input
                 type="checkbox"
@@ -137,21 +127,6 @@ export default function FilterSidebar({
         </div>
       </Section>
 
-      {/* Legend */}
-      <Section title="PV Revenue Legend">
-        <div className="space-y-1">
-          {[1, 2, 3, 4, 5].map(tier => (
-            <div key={tier} className="flex items-center gap-2 text-xs text-gray-600">
-              <span
-                className="inline-block w-4 h-3 rounded-sm border border-gray-300"
-                style={{ backgroundColor: PV_TIER_COLORS[tier].color }}
-              />
-              {PV_TIER_COLORS[tier].label}
-            </div>
-          ))}
-        </div>
-      </Section>
-
       {/* Reset */}
       <div className="p-4 mt-auto border-t border-gray-200">
         <button
@@ -180,19 +155,5 @@ function LayerToggle({ label, checked, onChange }: { label: string; checked: boo
       <input type="checkbox" checked={checked} onChange={onChange} className="rounded" />
       <span className="text-gray-700">{label}</span>
     </label>
-  );
-}
-
-function OpacitySlider({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <div className="ml-6 mt-1 mb-1">
-      <label className="text-xs text-gray-500">{label}: {Math.round(value * 100)}%</label>
-      <input
-        type="range"
-        min={0} max={100} value={Math.round(value * 100)}
-        onChange={e => onChange(Number(e.target.value) / 100)}
-        className="w-full h-1 accent-gray-600"
-      />
-    </div>
   );
 }

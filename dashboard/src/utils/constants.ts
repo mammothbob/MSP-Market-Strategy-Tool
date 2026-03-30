@@ -7,11 +7,10 @@ export const PV_TIER_COLORS: Record<number, { color: string; label: string; min:
 };
 
 export const ISO_RTO_COLORS: Record<string, string> = {
-  'PJM': '#4A90E2',
-  'NYISO': '#7ED321',
-  'ISO-NE': '#9013FE',
-  'CAISO': '#F5A623',
-  'non-ISO': '#E0E0E0',
+  'PJM': '#1E3A5F',
+  'NYISO': '#2563EB',
+  'ISO-NE': '#60A5FA',
+  'non-ISO': '#BFDBFE',
 };
 
 export const MARKET_TYPE_LABELS: Record<string, string> = {

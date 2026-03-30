@@ -17,10 +17,6 @@ export function useFilters(utilities: UtilityData[]) {
     setFilters(f => ({ ...f, layers: { ...f.layers, [layer]: !f.layers[layer] } }));
   }, []);
 
-  const setOpacity = useCallback((layer: keyof FilterState['opacity'], value: number) => {
-    setFilters(f => ({ ...f, opacity: { ...f.opacity, [layer]: value } }));
-  }, []);
-
   const setIsoFilter = useCallback((iso: IsoRto | 'all') => {
     setFilters(f => ({ ...f, isoFilter: iso }));
   }, []);
@@ -71,7 +67,6 @@ export function useFilters(utilities: UtilityData[]) {
     filteredUtilities,
     availableStates,
     toggleLayer,
-    setOpacity,
     setIsoFilter,
     setStateFilter,
     toggleNpvTier,

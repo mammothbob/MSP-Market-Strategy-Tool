@@ -1,199 +1,283 @@
+import { useMemo } from 'react';
+import {
+  ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, ReferenceLine,
+} from 'recharts';
 import type { UtilityData } from '../types';
 import { formatCurrency, MARKET_TYPE_LABELS, MARKET_TYPE_BADGE_COLORS, NPV_TIER_COLORS } from '../utils/constants';
+import { generateProjectTimeline } from '../utils/projectTimeline';
 
 interface Props {
   utility: UtilityData;
   onClose: () => void;
 }
 
+const COST_COLORS = {
+  development: '#9CA3AF',
+  capex: '#EF4444',
+  om: '#F59E0B',
+  augmentation: '#FBBF24',
+};
+
+const REV_COLORS = {
+  utilityProcurement: '#DC2626',
+  capacity: '#3B82F6',
+  arbitrage: '#A855F7',
+  ancillary: '#06B6D4',
+  stateIncentive: '#22C55E',
+  demandResponse: '#F97316',
+};
+
+const fmtK = (v: number) => {
+  if (Math.abs(v) >= 1000) return `$${(v / 1000).toFixed(1)}M`;
+  return `$${v.toFixed(0)}K`;
+};
+
 export default function UtilityModal({ utility, onClose }: Props) {
   const u = utility;
   const rev = u.revenue;
   const tierColor = NPV_TIER_COLORS[u.npv_results.npv_tier];
+  const timeline = useMemo(() => generateProjectTimeline(u), [u]);
 
-  // Revenue items for contract period
-  const contractRevItems = [
-    rev.utility_procurement && { label: 'Utility Procurement', value: rev.utility_procurement.value, source: rev.utility_procurement.source },
-    rev.iso_capacity_market?.value && { label: 'ISO Capacity Market', value: rev.iso_capacity_market.value, source: rev.iso_capacity_market.source },
-    rev.energy_arbitrage?.value && { label: 'Energy Arbitrage', value: rev.energy_arbitrage.value, source: rev.energy_arbitrage.source },
-    rev.ancillary_services?.value && { label: 'Ancillary Services', value: rev.ancillary_services.value, source: rev.ancillary_services.source },
-    rev.state_incentives?.value && { label: 'State Incentives', value: rev.state_incentives.value },
-    rev.demand_response?.value && { label: 'Demand Response', value: rev.demand_response.value, source: rev.demand_response.programs?.join(', ') },
-  ].filter(Boolean) as { label: string; value: number; source?: string }[];
+  // Determine which revenue labels to show based on what's nonzero
+  const hasUtilityProcurement = rev.utility_procurement !== null;
+  const hasCapacity = !!(rev.iso_capacity_market?.value);
+  const hasArbitrage = !!(rev.energy_arbitrage?.value);
+  const hasAncillary = !!(rev.ancillary_services?.value);
+  const hasStateIncentive = !!(rev.state_incentives?.value);
+  const hasDR = !!(rev.demand_response?.value);
 
-  const totalContractRev = contractRevItems.reduce((s, i) => s + i.value, 0);
-
-  // Merchant period: same minus utility procurement
-  const merchantRevItems = contractRevItems.filter(i => i.label !== 'Utility Procurement');
-  const totalMerchantRev = merchantRevItems.reduce((s, i) => s + i.value, 0);
-
-  const maxRevValue = Math.max(...contractRevItems.map(i => i.value), 1);
+  // COD year index for reference line
+  const codIdx = timeline.findIndex(d => d.phase === 'operations');
+  const codYear = codIdx >= 0 ? timeline[codIdx].calendarYear : undefined;
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="relative bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-start justify-between rounded-t-xl z-10">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{u.utility_name}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-sm text-gray-500">{u.state} · {u.iso_rto}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${MARKET_TYPE_BADGE_COLORS[u.market_type]}`}>
-                {MARKET_TYPE_LABELS[u.market_type]}
-              </span>
-            </div>
+            <h2 className="text-lg font-bold text-gray-900">
+              Mammoth Summit Power — {u.state} project economics
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              5 MW / 20 MWh · {u.utility_short_name} distribution interconnect · nominal USD thousands · {timeline[0].calendarYear}–{timeline[timeline.length - 1].calendarYear}
+            </p>
           </div>
-          <div className="text-right">
-            <div className="text-2xl font-bold" style={{ color: tierColor.color }}>
+          <div className="text-right shrink-0 ml-4">
+            <div className="text-xl font-bold" style={{ color: tierColor.color }}>
               {formatCurrency(u.npv_results.npv_per_kw)}/kW
             </div>
-            <div className="text-xs text-gray-500">{tierColor.label}</div>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${MARKET_TYPE_BADGE_COLORS[u.market_type]}`}>
+              {MARKET_TYPE_LABELS[u.market_type]}
+            </span>
+          </div>
+        </div>
+
+        {/* Phase bar */}
+        <div className="flex text-xs font-semibold tracking-wider">
+          <div className="bg-gray-200 text-gray-600 px-4 py-1.5 uppercase">Development</div>
+          <div className="bg-red-100 text-red-700 px-3 py-1.5 uppercase">COD</div>
+          <div className="bg-emerald-50 text-emerald-700 px-4 py-1.5 flex-1 uppercase">
+            Operations {codYear}–{timeline[timeline.length - 1].calendarYear}
           </div>
         </div>
 
         <div className="px-6 py-4 space-y-6">
-          {/* Revenue breakdown */}
+          {/* Chart 1: Annual Costs */}
           <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3">
-              Revenue Breakdown ($/kW-year)
-              {rev.utility_procurement && (
-                <span className="font-normal text-gray-500 ml-2">Contract Period: Years 1–{rev.utility_procurement.contract_term_years}</span>
-              )}
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              1 · Annual Costs ($K)
             </h3>
-            <div className="space-y-2">
-              {contractRevItems.map(item => (
-                <RevenueBar key={item.label} label={item.label} value={item.value} max={maxRevValue} source={item.source} />
-              ))}
-              <div className="border-t border-gray-200 pt-2 flex justify-between text-sm font-semibold">
-                <span>Total (Contract Period)</span>
-                <span>{formatCurrency(totalContractRev)}/kW-yr</span>
-              </div>
+            <div className="flex items-center gap-4 text-xs text-gray-500 mb-1">
+              <LegendDot color={COST_COLORS.development} label="Development" />
+              <LegendDot color={COST_COLORS.capex} label="Capex" />
+              <LegendDot color={COST_COLORS.om} label="O&M" />
+              <LegendDot color={COST_COLORS.augmentation} label="Augmentation" />
+              <span className="text-gray-400">--- Cost range</span>
             </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart data={timeline} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="calendarYear" tick={{ fontSize: 10 }} interval={2} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={fmtK} />
+                <Tooltip formatter={(v) => fmtK(Number(v))} labelFormatter={(l) => `Year ${l}`} />
+                <Area dataKey="costRangeHigh" stroke="none" fill="#FDE68A" fillOpacity={0.3} />
+                <Area dataKey="costRangeLow" stroke="none" fill="#fff" fillOpacity={1} />
+                <Bar dataKey="costDevelopment" stackId="cost" fill={COST_COLORS.development} />
+                <Bar dataKey="costCapex" stackId="cost" fill={COST_COLORS.capex} />
+                <Bar dataKey="costOM" stackId="cost" fill={COST_COLORS.om} />
+                <Bar dataKey="costAugmentation" stackId="cost" fill={COST_COLORS.augmentation} />
+                {codYear && <ReferenceLine x={codYear} stroke="#999" strokeDasharray="3 3" />}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
 
-            {rev.utility_procurement && (
-              <div className="mt-4">
-                <h4 className="text-xs font-semibold text-gray-500 mb-2">
-                  Merchant Period: Years {rev.utility_procurement.contract_term_years + 1}–20
-                </h4>
-                <div className="space-y-1">
-                  {merchantRevItems.map(item => (
-                    <RevenueBar key={item.label} label={item.label} value={item.value} max={maxRevValue} source={item.source} small />
-                  ))}
-                  <div className="border-t border-gray-200 pt-1 flex justify-between text-sm font-semibold">
-                    <span>Total (Merchant Period)</span>
-                    <span>{formatCurrency(totalMerchantRev)}/kW-yr</span>
-                  </div>
+          {/* Chart 2: Annual Revenue */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              2 · Annual Revenue ($K)
+            </h3>
+            <div className="flex items-center gap-4 text-xs text-gray-500 mb-1 flex-wrap">
+              {hasStateIncentive && <LegendDot color={REV_COLORS.stateIncentive} label="ITC + State incentive" />}
+              {!hasStateIncentive && <LegendDot color={REV_COLORS.stateIncentive} label="ITC" />}
+              {hasCapacity && <LegendDot color={REV_COLORS.capacity} label={`${u.iso_rto} capacity`} />}
+              {hasAncillary && <LegendDot color={REV_COLORS.ancillary} label="Regulation" />}
+              {hasArbitrage && <LegendDot color={REV_COLORS.arbitrage} label={`Arbitrage (${u.utility_short_name})`} />}
+              {hasUtilityProcurement && <LegendDot color={REV_COLORS.utilityProcurement} label={rev.utility_procurement!.source.split('(')[0].trim()} />}
+              {hasDR && <LegendDot color={REV_COLORS.demandResponse} label={rev.demand_response?.programs?.[0] ?? 'DR'} />}
+              <span className="text-gray-400">--- Revenue range</span>
+            </div>
+            <ResponsiveContainer width="100%" height={200}>
+              <ComposedChart data={timeline} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="calendarYear" tick={{ fontSize: 10 }} interval={2} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={fmtK} />
+                <Tooltip formatter={(v) => fmtK(Number(v))} labelFormatter={(l) => `Year ${l}`} />
+                <Area dataKey="revRangeHigh" stroke="none" fill="#BBF7D0" fillOpacity={0.3} />
+                <Area dataKey="revRangeLow" stroke="none" fill="#fff" fillOpacity={1} />
+                <Bar dataKey="revStateIncentive" stackId="rev" fill={REV_COLORS.stateIncentive} />
+                {hasCapacity && <Bar dataKey="revCapacity" stackId="rev" fill={REV_COLORS.capacity} />}
+                {hasAncillary && <Bar dataKey="revAncillary" stackId="rev" fill={REV_COLORS.ancillary} />}
+                {hasArbitrage && <Bar dataKey="revArbitrage" stackId="rev" fill={REV_COLORS.arbitrage} />}
+                {hasUtilityProcurement && <Bar dataKey="revUtilityProcurement" stackId="rev" fill={REV_COLORS.utilityProcurement} />}
+                {hasDR && <Bar dataKey="revDemandResponse" stackId="rev" fill={REV_COLORS.demandResponse} />}
+                {codYear && <ReferenceLine x={codYear} stroke="#999" strokeDasharray="3 3" />}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Chart 3: Net Cash Flow + Cumulative */}
+          <div>
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+              3 · Net Annual Cash Flow · Cumulative on Right Axis ($K)
+            </h3>
+            <div className="flex items-center gap-4 text-xs text-gray-500 mb-1">
+              <LegendDot color="#10B981" label="Net cash flow" />
+              <span className="text-gray-400">--- Confidence band</span>
+              <span className="text-amber-500">--- Cumulative (right)</span>
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <ComposedChart data={timeline} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="calendarYear" tick={{ fontSize: 10 }} interval={2} />
+                <YAxis yAxisId="left" tick={{ fontSize: 10 }} tickFormatter={fmtK} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10, fill: '#F59E0B' }} tickFormatter={fmtK} />
+                <Tooltip formatter={(v) => fmtK(Number(v))} labelFormatter={(l) => `Year ${l}`} />
+                <ReferenceLine yAxisId="left" y={0} stroke="#ddd" />
+                <Area yAxisId="left" dataKey="cashFlowRangeHigh" stroke="none" fill="#A7F3D0" fillOpacity={0.3} />
+                <Area yAxisId="left" dataKey="cashFlowRangeLow" stroke="none" fill="#fff" fillOpacity={1} />
+                <Bar yAxisId="left" dataKey="netCashFlow" fill="#10B981" />
+                <Line yAxisId="right" dataKey="cumulative" type="monotone" stroke="#F59E0B" strokeWidth={2} strokeDasharray="6 3" dot={false} />
+                {codYear && <ReferenceLine yAxisId="left" x={codYear} stroke="#999" strokeDasharray="3 3" />}
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Utility-specific assumptions */}
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+              Utility-Specific Assumptions
+            </h3>
+
+            <div className="grid grid-cols-2 gap-6 text-sm">
+              {/* Revenue adjustments */}
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Revenue Stack ($/kW-yr)</h4>
+                <div className="space-y-1.5">
+                  {hasUtilityProcurement && (
+                    <AssumptionRow
+                      label={rev.utility_procurement!.source.split('(')[0].trim()}
+                      value={`$${rev.utility_procurement!.value}`}
+                      detail={`${rev.utility_procurement!.contract_term_years}yr term, ${(rev.utility_procurement!.escalation_rate * 100).toFixed(1)}% esc.`}
+                    />
+                  )}
+                  {hasCapacity && <AssumptionRow label={`${u.iso_rto} capacity`} value={`$${rev.iso_capacity_market.value}`} detail={`${((rev.iso_capacity_market.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
+                  {hasArbitrage && <AssumptionRow label="Energy arbitrage" value={`$${rev.energy_arbitrage.value}`} detail={`${((rev.energy_arbitrage.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
+                  {hasAncillary && <AssumptionRow label="Ancillary services" value={`$${rev.ancillary_services.value}`} detail={`${((rev.ancillary_services.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
+                  {hasStateIncentive && <AssumptionRow label="State incentives" value={`$${rev.state_incentives.value}`} detail={rev.state_incentives.programs?.join(', ')} />}
+                  {hasDR && <AssumptionRow label={rev.demand_response?.programs?.[0] ?? 'DR'} value={`$${rev.demand_response!.value}`} detail={rev.demand_response?.notes} />}
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Cost summary */}
-          <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3">Cost Summary</h3>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-              <CostRow label="Base CapEx" value={`${formatCurrency(u.costs.capex_base)}/kW`} />
-              <CostRow label="Total CapEx" value={`${formatCurrency(u.costs.capex_total)}/kW`} />
-              <CostRow label="Total for 5 MW" value={formatCurrency(u.costs.capex_total * 5000)} />
-              <CostRow label="OpEx (Year 1)" value={`${formatCurrency(u.costs.opex_total, 2)}/kW-yr`} />
-              <CostRow label="Land Option" value={`${formatCurrency(u.costs.land_option_annual)}/yr`} />
-              <CostRow label="Dev Timeline" value={`${u.costs.development_timeline_months} months`} />
-            </div>
-          </div>
-
-          {/* NPV & Sensitivity */}
-          <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3">NPV Analysis</h3>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-              <CostRow label="20-Year NPV" value={`${formatCurrency(u.npv_results.npv_per_kw)}/kW`} bold />
-              <CostRow label="Total NPV (5 MW)" value={formatCurrency(u.npv_results.npv_total_5mw)} bold />
-              <CostRow label="IRR" value={`${(u.npv_results.irr * 100).toFixed(1)}%`} />
-              <CostRow label="Payback Period" value={`${u.npv_results.payback_years} years`} />
-            </div>
-            <div className="mt-3 bg-gray-50 rounded-lg p-3">
-              <h4 className="text-xs font-semibold text-gray-500 mb-2">Sensitivity Analysis</h4>
-              <div className="space-y-1 text-sm">
-                <SensitivityRow
-                  label="CapEx +10%"
-                  value={u.npv_results.sensitivity.npv_capex_plus_10pct}
-                  base={u.npv_results.npv_per_kw}
-                />
-                <SensitivityRow
-                  label="Revenue -20%"
-                  value={u.npv_results.sensitivity.npv_revenue_minus_20pct}
-                  base={u.npv_results.npv_per_kw}
-                />
-                <SensitivityRow
-                  label="Discount Rate 8%"
-                  value={u.npv_results.sensitivity.npv_discount_8pct}
-                  base={u.npv_results.npv_per_kw}
-                />
+              {/* Cost adjustments */}
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Cost Adjustments</h4>
+                <div className="space-y-1.5">
+                  <AssumptionRow label="CapEx adjustment" value={`$${u.costs.capex_total}/kW`} detail={u.costs.capex_total !== u.costs.capex_base ? `+$${u.costs.capex_total - u.costs.capex_base}/kW vs base` : 'No adjustment'} />
+                  <AssumptionRow label="OpEx (Year 1)" value={`$${u.costs.opex_total.toFixed(2)}/kW-yr`} detail={u.costs.opex_total !== u.costs.opex_base ? `+$${(u.costs.opex_total - u.costs.opex_base).toFixed(2)}/kW vs base` : 'No adjustment'} />
+                  <AssumptionRow label="Land option" value={`$${(u.costs.land_option_annual / 1000).toFixed(0)}K/yr`} detail="During development" />
+                  <AssumptionRow label="Dev timeline" value={`${u.costs.development_timeline_months} months`} />
+                  <AssumptionRow label="IX quality" value={`Tier ${u.utility_factors.interconnection_quality.tier}`} detail={u.utility_factors.interconnection_quality.avg_timeline_months ? `~${u.utility_factors.interconnection_quality.avg_timeline_months}mo avg` : undefined} />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Key factors */}
-          <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3">Key Factors</h3>
-            <div className="space-y-1.5 text-sm">
-              {rev.utility_procurement && (
-                <Factor positive label={`Utility procurement: ${rev.utility_procurement.source}`} />
-              )}
-              {u.iso_rto !== 'non-ISO' && (
-                <Factor positive label={`${u.iso_rto} wholesale market access`} />
-              )}
-              {u.state_factors.storage_mandate.exists && (
-                <Factor positive label={`Storage mandate: ${u.state_factors.storage_mandate.target_mw} MW by ${u.state_factors.storage_mandate.target_year}`} />
-              )}
-              {u.state_factors.tax_incentives.property_tax_exemption && (
-                <Factor positive label="Property tax exemption" />
-              )}
-              {u.utility_factors.interconnection_quality.tier === 1 && (
-                <Factor positive label="Tier 1 interconnection process" />
-              )}
-              {u.utility_factors.regulatory_posture.category === 'supportive' && (
-                <Factor positive label="Supportive regulatory environment" />
-              )}
-              {u.state_factors.labor_requirements.prevailing_wage && (
-                <Factor negative label="Prevailing wage requirements" />
-              )}
-              {u.utility_factors.interconnection_quality.tier >= 3 && (
-                <Factor negative label={`Tier ${u.utility_factors.interconnection_quality.tier} interconnection (slow/costly)`} />
-              )}
-              {u.risks.regulatory_uncertainty.npv_haircut > 0 && (
-                <Factor warning label={u.risks.regulatory_uncertainty.description ?? 'Regulatory uncertainty'} />
-              )}
-              {rev.utility_procurement?.status && (
-                <Factor warning label={`Status: ${rev.utility_procurement.status}`} />
-              )}
+            {/* State & utility factors */}
+            <div className="mt-4">
+              <h4 className="font-semibold text-gray-900 mb-2 text-sm">Modifiers Applied</h4>
+              <div className="flex flex-wrap gap-2">
+                {u.state_factors.storage_mandate.exists && (
+                  <ModifierBadge label={`Storage mandate: ${u.state_factors.storage_mandate.target_mw}MW by ${u.state_factors.storage_mandate.target_year}`} multiplier={u.state_factors.storage_mandate.npv_multiplier} />
+                )}
+                {u.state_factors.tax_incentives.npv_multiplier !== 1.0 && (
+                  <ModifierBadge label="Tax incentives" multiplier={u.state_factors.tax_incentives.npv_multiplier} />
+                )}
+                {u.state_factors.labor_requirements.npv_multiplier !== 1.0 && (
+                  <ModifierBadge label={u.state_factors.labor_requirements.prevailing_wage ? 'Prevailing wage' : 'Labor requirements'} multiplier={u.state_factors.labor_requirements.npv_multiplier} />
+                )}
+                {u.state_factors.permitting.npv_multiplier !== 1.0 && (
+                  <ModifierBadge label="Permitting" multiplier={u.state_factors.permitting.npv_multiplier} />
+                )}
+                {u.utility_factors.interconnection_quality.npv_multiplier !== 1.0 && (
+                  <ModifierBadge label={`IX Tier ${u.utility_factors.interconnection_quality.tier}`} multiplier={u.utility_factors.interconnection_quality.npv_multiplier} />
+                )}
+                {u.utility_factors.regulatory_posture.npv_multiplier !== 1.0 && (
+                  <ModifierBadge label={`Regulatory: ${u.utility_factors.regulatory_posture.category}`} multiplier={u.utility_factors.regulatory_posture.npv_multiplier} />
+                )}
+                {u.risks.regulatory_uncertainty.npv_haircut > 0 && (
+                  <ModifierBadge label="Regulatory risk" multiplier={1 - u.risks.regulatory_uncertainty.npv_haircut} />
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Development context */}
-          <div>
-            <h3 className="text-sm font-bold text-gray-900 mb-3">Development Context</h3>
-            <div className="text-sm space-y-1">
-              <div className="text-gray-700"><span className="font-medium">Active RFP:</span> {u.development_status.active_rfp}</div>
-              <div className="text-gray-700"><span className="font-medium">Mammoth sites:</span> {u.development_status.mammoth_sites}</div>
-              {u.development_status.notes && (
-                <div className="text-gray-500 italic">{u.development_status.notes}</div>
-              )}
-            </div>
-            {u.development_status.key_dates && u.development_status.key_dates.length > 0 && (
-              <div className="mt-3 space-y-1">
-                <h4 className="text-xs font-semibold text-gray-500">Key Dates</h4>
-                {u.development_status.key_dates.map((d, i) => (
-                  <div key={i} className="text-sm flex gap-3">
-                    <span className="text-gray-400 shrink-0">{d.date}</span>
-                    <span className="text-gray-700">{d.event}</span>
+            {/* Development context */}
+            <div className="mt-4 grid grid-cols-2 gap-6 text-sm">
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Development Status</h4>
+                <div className="text-gray-700 space-y-1">
+                  <div><span className="text-gray-500">Active RFP:</span> {u.development_status.active_rfp}</div>
+                  <div><span className="text-gray-500">Mammoth sites:</span> {u.development_status.mammoth_sites}</div>
+                  {u.development_status.notes && <div className="text-gray-500 italic text-xs">{u.development_status.notes}</div>}
+                </div>
+              </div>
+              {u.development_status.key_dates && u.development_status.key_dates.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Key Dates</h4>
+                  <div className="space-y-1">
+                    {u.development_status.key_dates.map((d, i) => (
+                      <div key={i} className="text-xs flex gap-2">
+                        <span className="text-gray-400 shrink-0">{d.date}</span>
+                        <span className="text-gray-700">{d.event}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom assumptions note */}
+          <div className="text-xs text-gray-400 border-t border-gray-100 pt-3">
+            Assumptions: COD {codYear} · ITC 30% x {formatCurrency(u.costs.capex_total * 5000)} capex
+            {rev.utility_procurement && ` · ${rev.utility_procurement.source}`}
+            {hasCapacity && ` · ${u.iso_rto} capacity $${rev.iso_capacity_market.value}/kW-yr`}
+            {hasDR && ` · ${rev.demand_response?.programs?.[0]} $${rev.demand_response?.value}/kW-yr`}
+            · Confidence bands: capex ±15%, merchant revenues ±25%
           </div>
         </div>
 
@@ -212,56 +296,33 @@ export default function UtilityModal({ utility, onClose }: Props) {
   );
 }
 
-function RevenueBar({ label, value, max, source, small }: { label: string; value: number; max: number; source?: string; small?: boolean }) {
-  const pct = (value / max) * 100;
+function LegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <div className={small ? 'text-xs' : 'text-sm'}>
-      <div className="flex justify-between mb-0.5">
-        <span className="text-gray-700">{label}</span>
-        <span className="font-medium">{formatCurrency(value)}</span>
+    <span className="flex items-center gap-1">
+      <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: color }} />
+      {label}
+    </span>
+  );
+}
+
+function AssumptionRow({ label, value, detail }: { label: string; value: string; detail?: string }) {
+  return (
+    <div>
+      <div className="flex justify-between">
+        <span className="text-gray-600">{label}</span>
+        <span className="font-medium text-gray-900">{value}</span>
       </div>
-      <div className="w-full bg-gray-100 rounded-full" style={{ height: small ? 6 : 8 }}>
-        <div
-          className="bg-green-500 rounded-full h-full transition-all"
-          style={{ width: `${Math.min(pct, 100)}%` }}
-        />
-      </div>
-      {source && <div className="text-xs text-gray-400 mt-0.5">{source}</div>}
+      {detail && <div className="text-xs text-gray-400">{detail}</div>}
     </div>
   );
 }
 
-function CostRow({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+function ModifierBadge({ label, multiplier }: { label: string; multiplier: number }) {
+  const pct = ((multiplier - 1) * 100);
+  const isPositive = pct >= 0;
   return (
-    <div className="flex justify-between">
-      <span className="text-gray-600">{label}</span>
-      <span className={bold ? 'font-bold text-gray-900' : 'text-gray-900'}>{value}</span>
-    </div>
-  );
-}
-
-function SensitivityRow({ label, value, base }: { label: string; value: number; base: number }) {
-  const pctChange = ((value - base) / base) * 100;
-  return (
-    <div className="flex justify-between">
-      <span className="text-gray-600">{label}</span>
-      <span>
-        <span className="font-medium">{formatCurrency(value)}/kW</span>
-        <span className={`ml-2 text-xs ${pctChange < 0 ? 'text-red-500' : 'text-green-600'}`}>
-          ({pctChange > 0 ? '+' : ''}{pctChange.toFixed(0)}%)
-        </span>
-      </span>
-    </div>
-  );
-}
-
-function Factor({ label, positive, negative }: { label: string; positive?: boolean; negative?: boolean; warning?: boolean }) {
-  const icon = positive ? '✓' : negative ? '✗' : '⚠';
-  const color = positive ? 'text-green-600' : negative ? 'text-red-500' : 'text-amber-500';
-  return (
-    <div className="flex items-start gap-2">
-      <span className={`${color} font-bold shrink-0`}>{icon}</span>
-      <span className="text-gray-700">{label}</span>
-    </div>
+    <span className={`text-xs px-2 py-1 rounded-full ${isPositive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+      {label}: {isPositive ? '+' : ''}{pct.toFixed(0)}%
+    </span>
   );
 }

@@ -3,6 +3,7 @@ import MapView from './components/MapView';
 import FilterSidebar from './components/FilterSidebar';
 import StatsSidebar from './components/StatsSidebar';
 import UtilityModal from './components/UtilityModal';
+import BaseAssumptionsModal from './components/BaseAssumptionsModal';
 import { utilities } from './data/utilities';
 import { useFilters } from './hooks/useFilters';
 import type { UtilityData } from './types';
@@ -16,6 +17,7 @@ function App() {
   } = useFilters(utilities);
 
   const [selectedUtility, setSelectedUtility] = useState<UtilityData | null>(null);
+  const [showBaseAssumptions, setShowBaseAssumptions] = useState(false);
 
   const handleUtilityClick = useCallback((utility: UtilityData) => {
     setSelectedUtility(utility);
@@ -47,6 +49,12 @@ function App() {
           <HeaderStat label="Utilities Modeled" value={String(utilities.length)} />
           <HeaderStat label="Avg NPV (Tier 1)" value={formatCurrency(avgTier1Npv) + '/kW'} />
           <HeaderStat label="Pipeline Sites" value={String(totalSites)} />
+          <button
+            onClick={() => setShowBaseAssumptions(true)}
+            className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded transition-colors"
+          >
+            Base Assumptions
+          </button>
           <div className="text-xs text-gray-400">Data as of Mar 29, 2026</div>
         </div>
       </header>
@@ -84,12 +92,15 @@ function App() {
         />
       </div>
 
-      {/* Modal */}
+      {/* Modals */}
       {selectedUtility && (
         <UtilityModal
           utility={selectedUtility}
           onClose={handleCloseModal}
         />
+      )}
+      {showBaseAssumptions && (
+        <BaseAssumptionsModal onClose={() => setShowBaseAssumptions(false)} />
       )}
     </div>
   );

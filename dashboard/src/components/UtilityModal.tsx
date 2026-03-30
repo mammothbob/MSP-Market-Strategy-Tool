@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ComposedChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -72,6 +72,8 @@ export default function UtilityModal({ utility, onClose }: Props) {
     }));
   }, [timeline]);
 
+  const [activeTab, setActiveTab] = useState<'economics' | 'sources'>('economics');
+
   const codIdx = timeline.findIndex(d => d.phase === 'operations');
   const codYear = codIdx >= 0 ? timeline[codIdx].calendarYear : undefined;
 
@@ -111,6 +113,73 @@ export default function UtilityModal({ utility, onClose }: Props) {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b border-gray-200">
+          <button
+            onClick={() => setActiveTab('economics')}
+            className={`px-6 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === 'economics'
+                ? 'text-gray-900 border-b-2 border-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Economics
+          </button>
+          <button
+            onClick={() => setActiveTab('sources')}
+            className={`px-6 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === 'sources'
+                ? 'text-gray-900 border-b-2 border-gray-900'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Sources
+          </button>
+        </div>
+
+        {activeTab === 'sources' && (
+          <div className="px-6 py-4">
+            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">
+              Revenue Assumption Sources
+            </h3>
+            <div className="space-y-4">
+              {(u.revenue_v2?.streams ?? []).filter(s => s.sources && s.sources.length > 0).map((stream, i) => (
+                <div key={i}>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: stream.color }} />
+                    <span className="text-sm font-semibold text-gray-900">{stream.name}</span>
+                    <span className="text-xs text-gray-400">
+                      {stream.type === 'one_time' && stream.amount ? formatCurrency(stream.amount) + ' one-time' : ''}
+                      {stream.type === 'annual' && stream.near_term_annual ? formatCurrency(stream.near_term_annual) + '/yr' : ''}
+                    </span>
+                  </div>
+                  {stream.notes && (
+                    <p className="text-xs text-gray-500 mb-1.5 ml-5">{stream.notes}</p>
+                  )}
+                  <div className="ml-5 space-y-1">
+                    {stream.sources!.map((src, j) => (
+                      <a
+                        key={j}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                      >
+                        <LinkIcon />
+                        {src.label}
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {(!u.revenue_v2 || u.revenue_v2.streams.every(s => !s.sources || s.sources.length === 0)) && (
+                <p className="text-sm text-gray-400 italic">No sources available for this utility yet.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'economics' && <>
         {/* Phase bar */}
         <div className="flex text-xs font-semibold tracking-wider">
           <div className="bg-gray-200 text-gray-600 px-4 py-1.5 uppercase">Development</div>
@@ -225,9 +294,23 @@ export default function UtilityModal({ utility, onClose }: Props) {
                   <tbody>
                     {u.revenue_v2!.streams.map((s, i) => (
                       <tr key={i} className="border-b border-gray-50">
-                        <td className="py-2 pr-4 font-medium text-gray-900 flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
-                          {s.name}
+                        <td className="py-2 pr-4 font-medium text-gray-900">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: s.color }} />
+                            {s.name}
+                            {s.sources && s.sources.length > 0 && (
+                              <a
+                                href={s.sources[0].url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={s.sources[0].label}
+                                className="text-blue-400 hover:text-blue-600 shrink-0"
+                                onClick={e => e.stopPropagation()}
+                              >
+                                <LinkIcon />
+                              </a>
+                            )}
+                          </span>
                         </td>
                         <td className="text-right py-2 px-3 text-gray-700">
                           {s.type === 'one_time' && s.amount ? formatCurrency(s.amount) : '—'}
@@ -309,6 +392,7 @@ export default function UtilityModal({ utility, onClose }: Props) {
             Assumptions: COD {codYear} · Discount rate 7% · Confidence bands: capex ±15%, revenues ±25%
           </div>
         </div>
+        </>}
 
         {/* Close button */}
         <button
@@ -331,5 +415,15 @@ function LegendDot({ color, label }: { color: string; label: string }) {
       <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ backgroundColor: color }} />
       {label}
     </span>
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
   );
 }

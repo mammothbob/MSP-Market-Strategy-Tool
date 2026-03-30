@@ -135,7 +135,7 @@ const rawUtilities: UtilityData[] = [
       total_merchant_period: 0
     },
     revenue_v2: {
-      one_time_total: 8000000,
+      one_time_total: 9500000,
       first_year_total_annual: 1574000,
       streams: [
         {
@@ -145,7 +145,10 @@ const rawUtilities: UtilityData[] = [
           color: "#22C55E",
           amount: 3000000,
           timing: "cod",
-          notes: "30% of ~$10M project cost; transferable; FEOC risk"
+          notes: "30% of ~$10M project cost; transferable; FEOC risk",
+          sources: [
+            { label: "IRS Section 48E", url: "https://www.irs.gov/credits-deductions/clean-electricity-investment-credit" }
+          ]
         },
         {
           name: "5-Year MACRS",
@@ -154,16 +157,25 @@ const rawUtilities: UtilityData[] = [
           color: "#86EFAC",
           amount: 500000,
           timing: "cod",
-          notes: "Additive to ITC; tax-position dependent; ~$500K PV"
+          notes: "Additive to ITC; tax-position dependent; ~$500K PV",
+          sources: [
+            { label: "IRS MACRS depreciation", url: "https://www.irs.gov/publications/p946" }
+          ]
         },
         {
-          name: "Illinois Rebate",
+          name: "Illinois CRGA Rebate",
           category: "rebate",
           type: "one_time",
           color: "#F97316",
-          amount: 5000000,
-          timing: "development",
-          notes: "Statutory floor; apply at IA execution"
+          amount: 6000000,
+          timing: "cod",
+          notes: "$300/kWh x 20,000 kWh (pre-2030 rate); paid after IA execution + project verification",
+          sources: [
+            { label: "CRGA bill text (SB25) — 16-107.6", url: "https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=022000050K16-107.6" },
+            { label: "ArentFox Schiff — IL storage procurement overview", url: "https://www.afslaw.com/perspectives/energy-cleantech-counsel/illinois-legislature-authorizes-states-first-procurement" },
+            { label: "EticaAG — IL BESS incentives guide", url: "https://eticaag.com/illinois-guide-to-bess-incentives-and-policies/" },
+            { label: "Concentro — IL SB25 developer guide", url: "https://www.concentro.io/blog/illinois-sb25" }
+          ]
         },
         {
           name: "RPM Capacity (DERA)",
@@ -174,7 +186,11 @@ const rawUtilities: UtilityData[] = [
           long_term_annual: 250000,
           trend: "declining",
           annual_growth_rate: -0.03,
-          notes: "First eligible DY 2028/29; ELCC uncertainty; range $304–502K"
+          notes: "First eligible DY 2028/29; ELCC uncertainty; range $304–502K",
+          sources: [
+            { label: "PJM DERA overview", url: "https://www.pjm.com/markets-and-operations/dera" },
+            { label: "PJM RPM auction results", url: "https://www.pjm.com/markets-and-operations/rpm" }
+          ]
         },
         {
           name: "Regulation",
@@ -185,7 +201,10 @@ const rawUtilities: UtilityData[] = [
           long_term_annual: 375000,
           trend: "declining",
           annual_growth_rate: -0.05,
-          notes: "Saturation risk from fleet growth; range $250–500K long-term"
+          notes: "Post-Oct 2025 redesign; saturation risk from fleet growth; range $250–500K long-term",
+          sources: [
+            { label: "PJM regulation market", url: "https://www.pjm.com/markets-and-operations/ancillary-services" }
+          ]
         },
         {
           name: "Energy Arbitrage",
@@ -196,7 +215,10 @@ const rawUtilities: UtilityData[] = [
           long_term_annual: 300000,
           trend: "growing",
           annual_growth_rate: 0.02,
-          notes: "ComEd zone weak; 2x worse than BGE/DOM"
+          notes: "ComEd zone weak; 2x worse than BGE/DOM",
+          sources: [
+            { label: "PJM LMP data", url: "https://dataminer2.pjm.com/feed/da_hrl_lmps" }
+          ]
         },
         {
           name: "VPP Scheduled Dispatch",
@@ -207,7 +229,11 @@ const rawUtilities: UtilityData[] = [
           long_term_annual: 50000,
           trend: "stable",
           annual_growth_rate: 0,
-          notes: "Voluntary; floor only; ICC rate TBD"
+          notes: "Voluntary; floor only; ICC rate TBD",
+          sources: [
+            { label: "ICC VPP docket P2021-0850", url: "https://icc.illinois.gov/docket/P2021-0850" },
+            { label: "CRGA VPP provisions", url: "https://www.concentro.io/blog/illinois-sb25" }
+          ]
         },
         {
           name: "VPP Long-Term Additive",
@@ -218,7 +244,10 @@ const rawUtilities: UtilityData[] = [
           long_term_annual: 0,
           trend: "tbd",
           annual_growth_rate: 0,
-          notes: "Locational value; ICC 2028 proceeding"
+          notes: "Locational value; ICC 2028 proceeding",
+          sources: [
+            { label: "ICC VPP docket P2021-0850", url: "https://icc.illinois.gov/docket/P2021-0850" }
+          ]
         }
       ]
     },

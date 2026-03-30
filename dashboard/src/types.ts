@@ -37,6 +37,11 @@ export interface Revenue {
 }
 
 // ── New flexible revenue model ──────────────────────────────────────────
+export interface RevenueSource {
+  label: string;
+  url: string;
+}
+
 export interface RevenueStream {
   name: string;
   category: 'tax_credit' | 'rebate' | 'capacity' | 'regulation' | 'arbitrage' | 'vpp' | 'other';
@@ -54,6 +59,7 @@ export interface RevenueStream {
   annual_growth_rate?: number; // positive = growing, negative = declining
 
   notes?: string;
+  sources?: RevenueSource[];
 }
 
 export interface RevenueStackV2 {

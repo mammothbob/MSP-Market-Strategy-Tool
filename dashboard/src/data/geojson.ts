@@ -1,4 +1,5 @@
 import type { FeatureCollection, Feature } from 'geojson';
+import hifldTerritories from './utility_territories.json';
 
 // ── ISO/RTO Boundaries (simplified) ─────────────────────────────────────
 export const isoBoundaries: FeatureCollection = {
@@ -218,141 +219,43 @@ export const stateBoundaries: FeatureCollection = {
   ]
 };
 
-// ── Utility Service Territory Boundaries (simplified/approximate) ───────
-// These will be replaced with real ORNL GeoJSON in Phase 2
+// ── Utility Service Territory Boundaries ─────────────────────────────────
+// Real HIFLD boundaries for 8 utilities, approximate for JCP&L and National Grid
+const hifldData = hifldTerritories as FeatureCollection;
+
+// Approximate boundaries for utilities not in HIFLD dataset
+const fallbackFeatures: Feature[] = [
+  // National Grid - Central/Western Massachusetts (approximate)
+  {
+    type: "Feature",
+    properties: { utility_id: "NGRID_MA" },
+    geometry: {
+      type: "Polygon",
+      coordinates: [[
+        [-73.3, 42.7], [-71.8, 42.7], [-71.8, 42.4], [-71.5, 42.2],
+        [-71.4, 42.0], [-71.4, 41.8], [-71.8, 41.5], [-72.5, 41.5],
+        [-73.0, 41.5], [-73.3, 42.0], [-73.3, 42.7]
+      ]]
+    }
+  },
+  // JCP&L - Western/Central NJ (approximate)
+  {
+    type: "Feature",
+    properties: { utility_id: "JCPL_NJ" },
+    geometry: {
+      type: "Polygon",
+      coordinates: [[
+        [-75.2, 41.0], [-74.9, 41.1], [-74.8, 39.8], [-74.4, 39.8],
+        [-74.3, 39.5], [-74.6, 39.4], [-75.0, 39.5], [-75.2, 39.8],
+        [-75.3, 40.3], [-75.2, 41.0]
+      ]]
+    }
+  },
+];
+
 export const utilityBoundaries: FeatureCollection = {
   type: "FeatureCollection",
-  features: [
-    // BGE - Baltimore metro area
-    {
-      type: "Feature",
-      properties: { utility_id: "BGE_MD" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-77.0, 39.5], [-76.3, 39.5], [-76.2, 39.4], [-76.2, 39.1],
-          [-76.3, 38.9], [-76.5, 38.7], [-76.8, 38.7], [-77.0, 38.9],
-          [-77.1, 39.1], [-77.0, 39.3], [-77.0, 39.5]
-        ]]
-      }
-    },
-    // PSE - Puget Sound region
-    {
-      type: "Feature",
-      properties: { utility_id: "PSE_WA" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-122.8, 48.5], [-122.0, 48.5], [-121.5, 48.0], [-121.5, 47.0],
-          [-121.8, 46.8], [-122.2, 46.8], [-122.6, 47.0], [-122.8, 47.5],
-          [-122.8, 48.5]
-        ]]
-      }
-    },
-    // ComEd - Northern Illinois / Chicago metro
-    {
-      type: "Feature",
-      properties: { utility_id: "COMED_IL" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-90.5, 42.5], [-87.5, 42.5], [-87.5, 41.4], [-87.7, 41.0],
-          [-88.0, 40.5], [-88.5, 40.2], [-89.5, 40.5], [-90.2, 41.0],
-          [-90.5, 41.5], [-90.5, 42.5]
-        ]]
-      }
-    },
-    // Eversource - Eastern Massachusetts (Greater Boston, Cape Cod, SE MA)
-    {
-      type: "Feature",
-      properties: { utility_id: "EVERSOURCE_MA" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-71.8, 42.7], [-70.8, 42.7], [-70.0, 42.5], [-69.9, 42.0],
-          [-70.0, 41.6], [-70.7, 41.5], [-71.0, 41.8], [-71.2, 41.7],
-          [-71.4, 42.0], [-71.5, 42.2], [-71.8, 42.4], [-71.8, 42.7]
-        ]]
-      }
-    },
-    // National Grid - Central/Western Massachusetts
-    {
-      type: "Feature",
-      properties: { utility_id: "NGRID_MA" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-73.3, 42.7], [-71.8, 42.7], [-71.8, 42.4], [-71.5, 42.2],
-          [-71.4, 42.0], [-71.4, 41.8], [-71.8, 41.5], [-72.5, 41.5],
-          [-73.0, 41.5], [-73.3, 42.0], [-73.3, 42.7]
-        ]]
-      }
-    },
-    // PSE&G - Northern/Central New Jersey
-    {
-      type: "Feature",
-      properties: { utility_id: "PSEG_NJ" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-74.9, 41.1], [-74.0, 41.1], [-74.0, 40.5], [-74.1, 40.0],
-          [-74.4, 39.8], [-74.8, 39.8], [-75.0, 40.2], [-75.0, 40.6],
-          [-74.9, 41.1]
-        ]]
-      }
-    },
-    // JCP&L - Western/Central NJ
-    {
-      type: "Feature",
-      properties: { utility_id: "JCPL_NJ" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-75.2, 41.0], [-74.9, 41.1], [-74.8, 39.8], [-74.4, 39.8],
-          [-74.3, 39.5], [-74.6, 39.4], [-75.0, 39.5], [-75.2, 39.8],
-          [-75.3, 40.3], [-75.2, 41.0]
-        ]]
-      }
-    },
-    // Atlantic City Electric - Southern NJ
-    {
-      type: "Feature",
-      properties: { utility_id: "ACE_NJ" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-74.6, 39.4], [-74.3, 39.5], [-74.1, 39.3], [-74.0, 39.0],
-          [-74.5, 38.9], [-75.0, 38.9], [-75.5, 39.5], [-75.0, 39.5],
-          [-74.6, 39.4]
-        ]]
-      }
-    },
-    // ConEd - NYC + Westchester
-    {
-      type: "Feature",
-      properties: { utility_id: "CONED_NY" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-74.0, 41.1], [-73.5, 41.2], [-73.6, 40.9], [-73.7, 40.6],
-          [-74.0, 40.5], [-74.3, 40.5], [-74.0, 40.8], [-74.0, 41.1]
-        ]]
-      }
-    },
-    // Xcel Energy - Colorado Front Range
-    {
-      type: "Feature",
-      properties: { utility_id: "XCEL_CO" },
-      geometry: {
-        type: "Polygon",
-        coordinates: [[
-          [-105.5, 40.8], [-104.5, 40.8], [-104.2, 40.2], [-104.2, 39.3],
-          [-104.5, 38.8], [-105.0, 38.8], [-105.5, 39.3], [-105.5, 40.0],
-          [-105.5, 40.8]
-        ]]
-      }
-    }
-  ]
+  features: [...hifldData.features, ...fallbackFeatures],
 };
 
 // Helper to get utility feature by ID

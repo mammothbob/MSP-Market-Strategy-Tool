@@ -18,7 +18,6 @@ const ISO_OPTIONS: { value: IsoRto | 'all'; label: string }[] = [
   { value: 'PJM', label: 'PJM' },
   { value: 'NYISO', label: 'NYISO' },
   { value: 'ISO-NE', label: 'ISO-NE' },
-  { value: 'CAISO', label: 'CAISO' },
   { value: 'non-ISO', label: 'Non-ISO' },
 ];
 

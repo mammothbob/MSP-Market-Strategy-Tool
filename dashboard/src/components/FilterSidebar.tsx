@@ -47,11 +47,6 @@ export default function FilterSidebar({
           />
         )}
         <LayerToggle
-          label="State Boundaries"
-          checked={filters.layers.states}
-          onChange={() => toggleLayer('states')}
-        />
-        <LayerToggle
           label="Utility Territories"
           checked={filters.layers.utilities}
           onChange={() => toggleLayer('utilities')}

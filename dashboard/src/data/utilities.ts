@@ -147,7 +147,7 @@ const rawUtilities: UtilityData[] = [
           timing: "cod",
           notes: "30% of ~$10M project cost; transferable; FEOC risk",
           sources: [
-            { label: "IRS Section 48E", url: "https://www.irs.gov/credits-deductions/clean-electricity-investment-credit" }
+            { label: "26 USC §48E — Clean Electricity Investment Credit", url: "https://www.irs.gov/credits-deductions/clean-electricity-investment-credit", section: "26 USC §48E", excerpt: "30% credit for qualified energy storage technology placed in service after Dec 31, 2024; transferable under §6418" }
           ]
         },
         {
@@ -159,7 +159,7 @@ const rawUtilities: UtilityData[] = [
           timing: "cod",
           notes: "Additive to ITC; tax-position dependent; ~$500K PV",
           sources: [
-            { label: "IRS MACRS depreciation", url: "https://www.irs.gov/publications/p946" }
+            { label: "IRS Publication 946 — MACRS", url: "https://www.irs.gov/publications/p946", section: "Chapter 4, Table B-1", excerpt: "Energy storage property classified as 5-year MACRS property; depreciation basis reduced by 50% of ITC amount" }
           ]
         },
         {
@@ -171,10 +171,10 @@ const rawUtilities: UtilityData[] = [
           timing: "cod",
           notes: "$300/kWh x 20,000 kWh (pre-2030 rate); paid after IA execution + project verification",
           sources: [
-            { label: "CRGA bill text (SB25) — 16-107.6", url: "https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=022000050K16-107.6" },
-            { label: "ArentFox Schiff — IL storage procurement overview", url: "https://www.afslaw.com/perspectives/energy-cleantech-counsel/illinois-legislature-authorizes-states-first-procurement" },
-            { label: "EticaAG — IL BESS incentives guide", url: "https://eticaag.com/illinois-guide-to-bess-incentives-and-policies/" },
-            { label: "Concentro — IL SB25 developer guide", url: "https://www.concentro.io/blog/illinois-sb25" }
+            { label: "220 ILCS 5/16-107.6 — Distributed Storage Rebate", url: "https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=022000050K16-107.6", section: "§16-107.6(b)", excerpt: "$300/kWh for applications before Dec 31, 2029; steps down to $250/kWh on Jan 1, 2030. Applies to standalone storage <5 MW interconnected to distribution grid." },
+            { label: "220 ILCS 5/16-107.6 — Payment timing", url: "https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=022000050K16-107.6", section: "§16-107.6(d)", excerpt: "Rebate reserved upon application acceptance; disbursed after interconnection agreement execution and project verification by utility." },
+            { label: "ArentFox Schiff — IL CRGA storage analysis", url: "https://www.afslaw.com/perspectives/energy-cleantech-counsel/illinois-legislature-authorizes-states-first-procurement", section: "Distributed Storage Rebate section", excerpt: "CRGA sets rebate at $250/kWh nameplate for standalone storage under 5 MW, with early-applicant bonus to $300/kWh pre-2030." },
+            { label: "Concentro — IL SB25 developer guide", url: "https://www.concentro.io/blog/illinois-sb25", section: "Storage Rebate Overview", excerpt: "Projects applying before Dec 31, 2029 eligible for $300/kWh; IA dated after Jan 8, 2026 required; 5-year VPP commitment." }
           ]
         },
         {
@@ -188,8 +188,9 @@ const rawUtilities: UtilityData[] = [
           annual_growth_rate: -0.03,
           notes: "First eligible DY 2028/29; ELCC uncertainty; range $304–502K",
           sources: [
-            { label: "PJM DERA overview", url: "https://www.pjm.com/markets-and-operations/dera" },
-            { label: "PJM RPM auction results", url: "https://www.pjm.com/markets-and-operations/rpm" }
+            { label: "FERC Order No. 2222 — DER Aggregation", url: "https://www.ferc.gov/media/ferc-order-no-2222", section: "FERC Order 2222", excerpt: "Requires RTOs/ISOs to allow DER aggregations to participate in wholesale markets. PJM implemented via DERA framework." },
+            { label: "PJM Manual 18 — DER Aggregation (DERA)", url: "https://www.pjm.com/markets-and-operations/dera", section: "Manual 18: PJM Capacity Market", excerpt: "Distribution-connected resources <10 MW can aggregate into DERA to participate in RPM capacity market, bypassing transmission queue." },
+            { label: "PJM RPM auction results", url: "https://www.pjm.com/markets-and-operations/rpm", section: "Base Residual Auction clearing prices", excerpt: "ComEd zone clearing prices used to estimate capacity revenue; ELCC accreditation determines effective capacity value." }
           ]
         },
         {
@@ -203,7 +204,8 @@ const rawUtilities: UtilityData[] = [
           annual_growth_rate: -0.05,
           notes: "Post-Oct 2025 redesign; saturation risk from fleet growth; range $250–500K long-term",
           sources: [
-            { label: "PJM regulation market", url: "https://www.pjm.com/markets-and-operations/ancillary-services" }
+            { label: "PJM Manual 12 — Balancing Operations", url: "https://www.pjm.com/-/media/DotCom/documents/manuals/m12.pdf", section: "Section 4.3–4.5: Regulation & Qualifying Resources", excerpt: "Covers regulation market obligations, regulation signals (RegA/RegD), dispatch, and qualification requirements for regulating resources." },
+            { label: "PJM Manual 11 — Energy & Ancillary Services", url: "https://www.pjm.com/-/media/DotCom/documents/manuals/m11.pdf", section: "Section 3: Regulation Market", excerpt: "Business rules for regulation market participation including performance scoring and mileage-based compensation." }
           ]
         },
         {
@@ -217,7 +219,8 @@ const rawUtilities: UtilityData[] = [
           annual_growth_rate: 0.02,
           notes: "ComEd zone weak; 2x worse than BGE/DOM",
           sources: [
-            { label: "PJM LMP data", url: "https://dataminer2.pjm.com/feed/da_hrl_lmps" }
+            { label: "PJM Data Miner — Day-ahead hourly LMPs", url: "https://dataminer2.pjm.com/feed/da_hrl_lmps", section: "DA_HRL_LMPS dataset", excerpt: "Hourly day-ahead LMP data by pricing node. Arbitrage revenue estimated from peak/off-peak spread in ComEd zone." },
+            { label: "PJM Manual 11 — Energy Market Operations", url: "https://www.pjm.com/-/media/DotCom/documents/manuals/m11.pdf", section: "Section 2: Day-ahead & Real-time Markets", excerpt: "Storage resources submit charge/discharge offers into DA and RT markets; LMP = system energy + congestion + losses." }
           ]
         },
         {
@@ -231,8 +234,8 @@ const rawUtilities: UtilityData[] = [
           annual_growth_rate: 0,
           notes: "Voluntary; floor only; ICC rate TBD",
           sources: [
-            { label: "ICC VPP docket P2021-0850", url: "https://icc.illinois.gov/docket/P2021-0850" },
-            { label: "CRGA VPP provisions", url: "https://www.concentro.io/blog/illinois-sb25" }
+            { label: "220 ILCS 5/16-107.6 — VPP Scheduled Dispatch", url: "https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=022000050K16-107.6", section: "§16-107.6(c)", excerpt: "Utilities must propose scheduled dispatch program by June 1, 2026; compensation for customers providing electricity to grid at scheduled peak times." },
+            { label: "ICC Docket P2021-0850 — ComEd VPP tariff", url: "https://icc.illinois.gov/docket/P2021-0850", section: "VPP tariff proceeding", excerpt: "ICC proceeding for ComEd VPP program design, dispatch rates, and customer eligibility. Decision expected June 30, 2026." }
           ]
         },
         {
@@ -246,7 +249,8 @@ const rawUtilities: UtilityData[] = [
           annual_growth_rate: 0,
           notes: "Locational value; ICC 2028 proceeding",
           sources: [
-            { label: "ICC VPP docket P2021-0850", url: "https://icc.illinois.gov/docket/P2021-0850" }
+            { label: "220 ILCS 5/16-107.6 — VPP Long-Term Program", url: "https://www.ilga.gov/legislation/ilcs/fulltext.asp?DocName=022000050K16-107.6", section: "§16-107.6(e)", excerpt: "Utilities submit multi-faceted VPP proposals by end of 2027; locational value component to reflect grid congestion and deferral benefits." },
+            { label: "ICC Docket P2021-0850", url: "https://icc.illinois.gov/docket/P2021-0850", section: "Future VPP rulemaking", excerpt: "Long-term VPP additive to be determined through ICC 2028 proceeding; rate structure and eligibility TBD." }
           ]
         }
       ]

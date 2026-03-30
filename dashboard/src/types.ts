@@ -40,6 +40,8 @@ export interface Revenue {
 export interface RevenueSource {
   label: string;
   url: string;
+  section?: string;
+  excerpt?: string;
 }
 
 export interface RevenueStream {

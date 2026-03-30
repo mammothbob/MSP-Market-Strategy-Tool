@@ -2,7 +2,7 @@ import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import type { Layer, PathOptions } from 'leaflet';
 import { useMemo, useCallback } from 'react';
 import type { Feature } from 'geojson';
-import { isoBoundaries, stateBoundaries, utilityBoundaries } from '../data/geojson';
+import { isoBoundaries, utilityBoundaries } from '../data/geojson';
 import type { UtilityData, FilterState } from '../types';
 import { PV_TIER_COLORS, ISO_RTO_COLORS, formatCurrency } from '../utils/constants';
 
@@ -40,15 +40,6 @@ export default function MapView({ filters, filteredUtilities, utilities, onUtili
       opacity: dimmed ? 0.2 : 0.8,
     };
   }, [filters.isoFilter, filters.opacity.iso]);
-
-  // State style
-  const stateStyle = useCallback((): PathOptions => ({
-    fillColor: 'transparent',
-    fillOpacity: 0,
-    color: '#000000',
-    weight: 1,
-    opacity: 0.6,
-  }), []);
 
   // Utility style
   const utilityStyle = useCallback((feature?: Feature): PathOptions => {
@@ -126,25 +117,7 @@ export default function MapView({ filters, filteredUtilities, utilities, onUtili
         />
       )}
 
-      {/* Layer 2: State boundaries */}
-      {filters.layers.states && (
-        <GeoJSON
-          data={stateBoundaries}
-          style={stateStyle}
-          onEachFeature={(feature, layer) => {
-            const abbr = feature.properties?.state;
-            if (abbr) {
-              layer.bindTooltip(abbr, {
-                permanent: true,
-                direction: 'center',
-                className: 'state-label',
-              });
-            }
-          }}
-        />
-      )}
-
-      {/* Layer 3: Utility territories */}
+      {/* Utility territories */}
       {filters.layers.utilities && (
         <GeoJSON
           key={utilKey}

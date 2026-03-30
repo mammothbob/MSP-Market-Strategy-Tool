@@ -149,18 +149,25 @@ export default function UtilityModal({ utility, onClose }: Props) {
                     {stream.notes && (
                       <p className="text-xs text-gray-500 mb-1.5 ml-5">{stream.notes}</p>
                     )}
-                    <div className="ml-5 space-y-1">
+                    <div className="ml-5 space-y-2.5">
                       {stream.sources!.map((src, j) => (
-                        <a
-                          key={j}
-                          href={src.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 hover:underline"
-                        >
-                          <LinkIcon />
-                          {src.label}
-                        </a>
+                        <div key={j}>
+                          <a
+                            href={src.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                          >
+                            <LinkIcon />
+                            {src.label}
+                          </a>
+                          {src.section && (
+                            <div className="text-xs text-gray-500 mt-0.5 ml-4">{src.section}</div>
+                          )}
+                          {src.excerpt && (
+                            <div className="text-xs text-gray-400 italic mt-0.5 ml-4">"{src.excerpt}"</div>
+                          )}
+                        </div>
                       ))}
                     </div>
                   </div>

@@ -27,9 +27,9 @@ function App() {
     setSelectedUtility(null);
   }, []);
 
-  const tier1Utilities = utilities.filter(u => u.npv_results.npv_tier === 1);
-  const avgTier1Npv = tier1Utilities.length > 0
-    ? Math.round(tier1Utilities.reduce((s, u) => s + u.npv_results.npv_per_kw, 0) / tier1Utilities.length)
+  const tier1Utilities = utilities.filter(u => u.pv_results.pv_tier === 1);
+  const avgTier1PV = tier1Utilities.length > 0
+    ? Math.round(tier1Utilities.reduce((s, u) => s + u.pv_results.pv_total, 0) / tier1Utilities.length)
     : 0;
   const totalSites = utilities.reduce((s, u) => s + u.development_status.mammoth_sites, 0);
 
@@ -47,7 +47,7 @@ function App() {
         </div>
         <div className="flex items-center gap-6 text-sm">
           <HeaderStat label="Utilities Modeled" value={String(utilities.length)} />
-          <HeaderStat label="Avg NPV (Tier 1)" value={formatCurrency(avgTier1Npv) + '/kW'} />
+          <HeaderStat label="Avg PV Rev (Tier 1)" value={formatCurrency(avgTier1PV)} />
           <HeaderStat label="Pipeline Sites" value={String(totalSites)} />
           <button
             onClick={() => setShowBaseAssumptions(true)}

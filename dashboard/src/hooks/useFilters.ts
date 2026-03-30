@@ -55,7 +55,7 @@ export function useFilters(utilities: UtilityData[]) {
     return utilities.filter(u => {
       if (filters.isoFilter !== 'all' && u.iso_rto !== filters.isoFilter) return false;
       if (filters.stateFilter !== 'all' && u.state_abbr !== filters.stateFilter) return false;
-      if (!filters.npvTiers.has(u.npv_results.npv_tier)) return false;
+      if (!filters.npvTiers.has(u.pv_results.pv_tier)) return false;
       if (!filters.marketTypes.has(u.market_type)) return false;
       return true;
     });

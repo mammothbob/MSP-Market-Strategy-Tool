@@ -64,16 +64,8 @@ export interface Risks {
 }
 
 export interface NPVResults {
-  npv_per_kw: number;
-  npv_total_5mw: number;
-  irr: number;
-  payback_years: number;
-  npv_tier: 1 | 2 | 3 | 4 | 5;
-  sensitivity: {
-    npv_capex_plus_10pct: number;
-    npv_revenue_minus_20pct: number;
-    npv_discount_8pct: number;
-  };
+  pv_total: number;
+  pv_tier: 1 | 2 | 3 | 4 | 5;
 }
 
 export interface KeyDate {
@@ -102,7 +94,7 @@ export interface UtilityData {
   state_factors: StateFactors;
   utility_factors: UtilityFactors;
   risks: Risks;
-  npv_results: NPVResults;
+  pv_results: NPVResults;
   development_status: DevelopmentStatus;
 }
 

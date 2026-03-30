@@ -1,5 +1,5 @@
 import type { FilterState, IsoRto } from '../types';
-import { NPV_TIER_COLORS, ISO_RTO_COLORS, MARKET_TYPE_LABELS } from '../utils/constants';
+import { PV_TIER_COLORS, ISO_RTO_COLORS, MARKET_TYPE_LABELS } from '../utils/constants';
 
 interface Props {
   filters: FilterState;
@@ -105,7 +105,7 @@ export default function FilterSidebar({
       </Section>
 
       {/* NPV Tier */}
-      <Section title="NPV Tier">
+      <Section title="PV Revenue Tier">
         <div className="space-y-1">
           {[1, 2, 3].map(tier => (
             <label key={tier} className="flex items-center gap-2 text-sm cursor-pointer">
@@ -117,9 +117,9 @@ export default function FilterSidebar({
               />
               <span
                 className="inline-block w-3 h-3 rounded-sm"
-                style={{ backgroundColor: NPV_TIER_COLORS[tier].color }}
+                style={{ backgroundColor: PV_TIER_COLORS[tier].color }}
               />
-              <span className="text-gray-700">{NPV_TIER_COLORS[tier].label}</span>
+              <span className="text-gray-700">{PV_TIER_COLORS[tier].label}</span>
             </label>
           ))}
         </div>
@@ -143,15 +143,15 @@ export default function FilterSidebar({
       </Section>
 
       {/* Legend */}
-      <Section title="NPV Legend">
+      <Section title="PV Revenue Legend">
         <div className="space-y-1">
           {[1, 2, 3, 4, 5].map(tier => (
             <div key={tier} className="flex items-center gap-2 text-xs text-gray-600">
               <span
                 className="inline-block w-4 h-3 rounded-sm border border-gray-300"
-                style={{ backgroundColor: NPV_TIER_COLORS[tier].color }}
+                style={{ backgroundColor: PV_TIER_COLORS[tier].color }}
               />
-              {NPV_TIER_COLORS[tier].label}
+              {PV_TIER_COLORS[tier].label}
             </div>
           ))}
         </div>

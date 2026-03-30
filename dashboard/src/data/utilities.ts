@@ -1,6 +1,7 @@
 import type { UtilityData } from '../types';
+import { calculatePVRevenue } from '../utils/pvCalculator';
 
-export const utilities: UtilityData[] = [
+const rawUtilities: UtilityData[] = [
   // ── Tier 1: Active Development Focus ──────────────────────────────────
   {
     utility_id: "BGE_MD",
@@ -46,11 +47,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { description: "None - ISC Program 3 approved by PSC", npv_haircut: 0 },
       discount_rate: 0.07
     },
-    npv_results: {
-      npv_per_kw: 1850, npv_total_5mw: 9250000, irr: 0.14, payback_years: 8.5,
-      npv_tier: 1,
-      sensitivity: { npv_capex_plus_10pct: 1650, npv_revenue_minus_20pct: 1200, npv_discount_8pct: 1620 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "BGE ISC Program 3",
       mammoth_sites: 8,
@@ -107,11 +104,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { description: "None - proven DSS program", npv_haircut: 0 },
       discount_rate: 0.07
     },
-    npv_results: {
-      npv_per_kw: 1920, npv_total_5mw: 9600000, irr: 0.145, payback_years: 8.0,
-      npv_tier: 1,
-      sensitivity: { npv_capex_plus_10pct: 1670, npv_revenue_minus_20pct: 1280, npv_discount_8pct: 1700 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "PSE DSS 2026 (awarded)",
       mammoth_sites: 5,
@@ -167,11 +160,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { description: "IL ISO departure study pending; VPP tariff approval uncertain", npv_haircut: 0.15 },
       discount_rate: 0.07
     },
-    npv_results: {
-      npv_per_kw: 980, npv_total_5mw: 4900000, irr: 0.105, payback_years: 11.5,
-      npv_tier: 3,
-      sensitivity: { npv_capex_plus_10pct: 730, npv_revenue_minus_20pct: 480, npv_discount_8pct: 820 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "ComEd VPP tariff (pending)",
       mammoth_sites: 4,
@@ -222,11 +211,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { npv_haircut: 0 },
       discount_rate: 0.08
     },
-    npv_results: {
-      npv_per_kw: 1750, npv_total_5mw: 8750000, irr: 0.135, payback_years: 9.0,
-      npv_tier: 1,
-      sensitivity: { npv_capex_plus_10pct: 1490, npv_revenue_minus_20pct: 1100, npv_discount_8pct: 1750 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "No active RFP - merchant + incentive market",
       mammoth_sites: 3,
@@ -277,11 +262,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { npv_haircut: 0 },
       discount_rate: 0.08
     },
-    npv_results: {
-      npv_per_kw: 1700, npv_total_5mw: 8500000, irr: 0.13, payback_years: 9.2,
-      npv_tier: 1,
-      sensitivity: { npv_capex_plus_10pct: 1440, npv_revenue_minus_20pct: 1050, npv_discount_8pct: 1700 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "No active RFP - merchant + incentive market",
       mammoth_sites: 2,
@@ -331,11 +312,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { npv_haircut: 0 },
       discount_rate: 0.08
     },
-    npv_results: {
-      npv_per_kw: 1250, npv_total_5mw: 6250000, irr: 0.115, payback_years: 10.0,
-      npv_tier: 2,
-      sensitivity: { npv_capex_plus_10pct: 1040, npv_revenue_minus_20pct: 750, npv_discount_8pct: 1250 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "No active RFP - merchant + incentive market",
       mammoth_sites: 2,
@@ -382,11 +359,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { npv_haircut: 0 },
       discount_rate: 0.08
     },
-    npv_results: {
-      npv_per_kw: 1150, npv_total_5mw: 5750000, irr: 0.11, payback_years: 10.5,
-      npv_tier: 2,
-      sensitivity: { npv_capex_plus_10pct: 940, npv_revenue_minus_20pct: 650, npv_discount_8pct: 1150 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "No active RFP",
       mammoth_sites: 1,
@@ -433,11 +406,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { npv_haircut: 0 },
       discount_rate: 0.08
     },
-    npv_results: {
-      npv_per_kw: 1080, npv_total_5mw: 5400000, irr: 0.105, payback_years: 11.0,
-      npv_tier: 2,
-      sensitivity: { npv_capex_plus_10pct: 870, npv_revenue_minus_20pct: 580, npv_discount_8pct: 1080 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "No active RFP",
       mammoth_sites: 1,
@@ -484,11 +453,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { description: "SEQRA environmental review complexity", npv_haircut: 0.05 },
       discount_rate: 0.08
     },
-    npv_results: {
-      npv_per_kw: 1100, npv_total_5mw: 5500000, irr: 0.11, payback_years: 10.5,
-      npv_tier: 2,
-      sensitivity: { npv_capex_plus_10pct: 820, npv_revenue_minus_20pct: 580, npv_discount_8pct: 1100 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "No active RFP - VDER + merchant market",
       mammoth_sites: 2,
@@ -544,11 +509,7 @@ export const utilities: UtilityData[] = [
       regulatory_uncertainty: { description: "DDG RFP details unknown - high uncertainty", npv_haircut: 0.20 },
       discount_rate: 0.08
     },
-    npv_results: {
-      npv_per_kw: 650, npv_total_5mw: 3250000, irr: 0.085, payback_years: 13.0,
-      npv_tier: 3,
-      sensitivity: { npv_capex_plus_10pct: 410, npv_revenue_minus_20pct: 250, npv_discount_8pct: 650 }
-    },
+    pv_results: { pv_total: 0, pv_tier: 5 as const },
     development_status: {
       active_rfp: "Xcel DDG RFP (watch - 2027)",
       mammoth_sites: 0,
@@ -559,3 +520,9 @@ export const utilities: UtilityData[] = [
     }
   }
 ];
+
+// Compute PV of revenue for each utility
+export const utilities: UtilityData[] = rawUtilities.map(u => {
+  const pv = calculatePVRevenue(u);
+  return { ...u, pv_results: { pv_total: pv.pv_total, pv_tier: pv.pv_tier } };
+});

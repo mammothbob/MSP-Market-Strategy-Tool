@@ -4,7 +4,7 @@ import {
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import type { UtilityData } from '../types';
-import { formatCurrency, MARKET_TYPE_LABELS, MARKET_TYPE_BADGE_COLORS, NPV_TIER_COLORS } from '../utils/constants';
+import { formatCurrency, MARKET_TYPE_LABELS, MARKET_TYPE_BADGE_COLORS, PV_TIER_COLORS } from '../utils/constants';
 import { generateProjectTimeline } from '../utils/projectTimeline';
 
 interface Props {
@@ -36,7 +36,7 @@ const fmtK = (v: number) => {
 export default function UtilityModal({ utility, onClose }: Props) {
   const u = utility;
   const rev = u.revenue;
-  const tierColor = NPV_TIER_COLORS[u.npv_results.npv_tier];
+  const tierColor = PV_TIER_COLORS[u.pv_results.pv_tier];
   const timeline = useMemo(() => generateProjectTimeline(u), [u]);
 
   // Determine which revenue labels to show based on what's nonzero
@@ -70,8 +70,9 @@ export default function UtilityModal({ utility, onClose }: Props) {
           </div>
           <div className="text-right shrink-0 ml-4">
             <div className="text-xl font-bold" style={{ color: tierColor.color }}>
-              {formatCurrency(u.npv_results.npv_per_kw)}/kW
+              {formatCurrency(u.pv_results.pv_total)}
             </div>
+            <div className="text-xs text-gray-500">20-yr PV of Revenue</div>
             <span className={`text-xs px-2 py-0.5 rounded-full ${MARKET_TYPE_BADGE_COLORS[u.market_type]}`}>
               {MARKET_TYPE_LABELS[u.market_type]}
             </span>
@@ -184,36 +185,21 @@ export default function UtilityModal({ utility, onClose }: Props) {
               Utility-Specific Assumptions
             </h3>
 
-            <div className="grid grid-cols-2 gap-6 text-sm">
-              {/* Revenue adjustments */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Revenue Stack ($/kW-yr)</h4>
-                <div className="space-y-1.5">
-                  {hasUtilityProcurement && (
-                    <AssumptionRow
-                      label={rev.utility_procurement!.source.split('(')[0].trim()}
-                      value={`$${rev.utility_procurement!.value}`}
-                      detail={`${rev.utility_procurement!.contract_term_years}yr term, ${(rev.utility_procurement!.escalation_rate * 100).toFixed(1)}% esc.`}
-                    />
-                  )}
-                  {hasCapacity && <AssumptionRow label={`${u.iso_rto} capacity`} value={`$${rev.iso_capacity_market.value}`} detail={`${((rev.iso_capacity_market.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
-                  {hasArbitrage && <AssumptionRow label="Energy arbitrage" value={`$${rev.energy_arbitrage.value}`} detail={`${((rev.energy_arbitrage.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
-                  {hasAncillary && <AssumptionRow label="Ancillary services" value={`$${rev.ancillary_services.value}`} detail={`${((rev.ancillary_services.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
-                  {hasStateIncentive && <AssumptionRow label="State incentives" value={`$${rev.state_incentives.value}`} detail={rev.state_incentives.programs?.join(', ')} />}
-                  {hasDR && <AssumptionRow label={rev.demand_response?.programs?.[0] ?? 'DR'} value={`$${rev.demand_response!.value}`} detail={rev.demand_response?.notes} />}
-                </div>
-              </div>
-
-              {/* Cost adjustments */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-2">Cost Adjustments</h4>
-                <div className="space-y-1.5">
-                  <AssumptionRow label="CapEx adjustment" value={`$${u.costs.capex_total}/kW`} detail={u.costs.capex_total !== u.costs.capex_base ? `+$${u.costs.capex_total - u.costs.capex_base}/kW vs base` : 'No adjustment'} />
-                  <AssumptionRow label="OpEx (Year 1)" value={`$${u.costs.opex_total.toFixed(2)}/kW-yr`} detail={u.costs.opex_total !== u.costs.opex_base ? `+$${(u.costs.opex_total - u.costs.opex_base).toFixed(2)}/kW vs base` : 'No adjustment'} />
-                  <AssumptionRow label="Land option" value={`$${(u.costs.land_option_annual / 1000).toFixed(0)}K/yr`} detail="During development" />
-                  <AssumptionRow label="Dev timeline" value={`${u.costs.development_timeline_months} months`} />
-                  <AssumptionRow label="IX quality" value={`Tier ${u.utility_factors.interconnection_quality.tier}`} detail={u.utility_factors.interconnection_quality.avg_timeline_months ? `~${u.utility_factors.interconnection_quality.avg_timeline_months}mo avg` : undefined} />
-                </div>
+            <div className="text-sm">
+              <h4 className="font-semibold text-gray-900 mb-2">Revenue Stack ($/kW-yr)</h4>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                {hasUtilityProcurement && (
+                  <AssumptionRow
+                    label={rev.utility_procurement!.source.split('(')[0].trim()}
+                    value={`$${rev.utility_procurement!.value}`}
+                    detail={`${rev.utility_procurement!.contract_term_years}yr term, ${(rev.utility_procurement!.escalation_rate * 100).toFixed(1)}% esc.`}
+                  />
+                )}
+                {hasCapacity && <AssumptionRow label={`${u.iso_rto} capacity`} value={`$${rev.iso_capacity_market.value}`} detail={`${((rev.iso_capacity_market.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
+                {hasArbitrage && <AssumptionRow label="Energy arbitrage" value={`$${rev.energy_arbitrage.value}`} detail={`${((rev.energy_arbitrage.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
+                {hasAncillary && <AssumptionRow label="Ancillary services" value={`$${rev.ancillary_services.value}`} detail={`${((rev.ancillary_services.erosion_rate ?? 0) * 100).toFixed(0)}%/yr erosion`} />}
+                {hasStateIncentive && <AssumptionRow label="State incentives" value={`$${rev.state_incentives.value}`} detail={rev.state_incentives.programs?.join(', ')} />}
+                {hasDR && <AssumptionRow label={rev.demand_response?.programs?.[0] ?? 'DR'} value={`$${rev.demand_response!.value}`} detail={rev.demand_response?.notes} />}
               </div>
             </div>
 

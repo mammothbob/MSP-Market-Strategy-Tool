@@ -1,9 +1,9 @@
-export const NPV_TIER_COLORS: Record<number, { color: string; label: string; min: number; max: number }> = {
-  1: { color: '#2E7D32', label: 'Tier 1: ≥$1,500/kW', min: 1500, max: Infinity },
-  2: { color: '#66BB6A', label: 'Tier 2: $1,000–1,499/kW', min: 1000, max: 1499 },
-  3: { color: '#FDD835', label: 'Tier 3: $500–999/kW', min: 500, max: 999 },
-  4: { color: '#FB8C00', label: 'Tier 4: $0–499/kW', min: 0, max: 499 },
-  5: { color: '#BDBDBD', label: 'Tier 5: Negative NPV', min: -Infinity, max: -1 },
+export const PV_TIER_COLORS: Record<number, { color: string; label: string; min: number; max: number }> = {
+  1: { color: '#2E7D32', label: 'Tier 1: ≥$15M', min: 15_000_000, max: Infinity },
+  2: { color: '#66BB6A', label: 'Tier 2: $10–15M', min: 10_000_000, max: 14_999_999 },
+  3: { color: '#FDD835', label: 'Tier 3: $7–10M', min: 7_000_000, max: 9_999_999 },
+  4: { color: '#FB8C00', label: 'Tier 4: $5–7M', min: 5_000_000, max: 6_999_999 },
+  5: { color: '#BDBDBD', label: 'Tier 5: <$5M', min: -Infinity, max: 4_999_999 },
 };
 
 export const ISO_RTO_COLORS: Record<string, string> = {

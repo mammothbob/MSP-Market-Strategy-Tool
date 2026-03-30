@@ -4,7 +4,7 @@ import { useMemo, useCallback } from 'react';
 import type { Feature } from 'geojson';
 import { isoBoundaries, stateBoundaries, utilityBoundaries } from '../data/geojson';
 import type { UtilityData, FilterState } from '../types';
-import { NPV_TIER_COLORS, ISO_RTO_COLORS, formatCurrency } from '../utils/constants';
+import { PV_TIER_COLORS, ISO_RTO_COLORS, formatCurrency } from '../utils/constants';
 
 interface Props {
   filters: FilterState;
@@ -57,8 +57,8 @@ export default function MapView({ filters, filteredUtilities, utilities, onUtili
     if (!utility || !filteredIds.has(uid)) {
       return { fillColor: '#BDBDBD', fillOpacity: 0.1, color: '#fff', weight: 1, opacity: 0.3 };
     }
-    const tier = utility.npv_results.npv_tier;
-    const color = NPV_TIER_COLORS[tier]?.color ?? '#BDBDBD';
+    const tier = utility.pv_results.pv_tier;
+    const color = PV_TIER_COLORS[tier]?.color ?? '#BDBDBD';
     return {
       fillColor: color,
       fillOpacity: filters.opacity.utilities,
@@ -158,7 +158,7 @@ export default function MapView({ filters, filteredUtilities, utilities, onUtili
               const tipContent = `<div class="text-sm">
                 <div class="font-bold">${utility.utility_short_name}</div>
                 <div>${utility.state} · ${utility.iso_rto}</div>
-                <div class="font-semibold mt-1">NPV: ${formatCurrency(utility.npv_results.npv_per_kw)}/kW</div>
+                <div class="font-semibold mt-1">PV Revenue: ${formatCurrency(utility.pv_results.pv_total)}</div>
               </div>`;
               layer.bindTooltip(tipContent, { sticky: true });
             }

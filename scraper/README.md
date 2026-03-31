@@ -37,6 +37,20 @@ python loopnet_scraper.py --limit 5 --headful
 
 # Full run with detail pages and JSON output
 python loopnet_scraper.py --details --json
+
+# --- ZIP code mode (more granular, uses ComEd's official ZIP list) ---
+
+# Download ComEd's official ZIP code spreadsheet first
+python comed_zipcodes.py --download
+
+# Search by ZIP code instead of city name
+python loopnet_scraper.py --use-zipcodes
+
+# Search only Chicago ZIP codes (606xx)
+python loopnet_scraper.py --use-zipcodes --zip-prefix 606
+
+# Search Rockford area ZIPs only
+python loopnet_scraper.py --use-zipcodes --zip-prefix 611
 ```
 
 ## Regions

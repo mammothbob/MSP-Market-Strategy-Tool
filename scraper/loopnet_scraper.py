@@ -63,6 +63,7 @@ from comed_territory import (
     LISTING_TYPES,
     get_search_locations,
 )
+from comed_zipcodes import load_comed_zipcodes
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -70,6 +71,7 @@ from comed_territory import (
 
 LOOPNET_BASE = "https://www.loopnet.com"
 SEARCH_URL_TEMPLATE = "{base}/search/{property_type}/{city}-il/{listing_type}/"
+SEARCH_ZIP_URL_TEMPLATE = "{base}/search/{property_type}/{zipcode}/{listing_type}/"
 LISTING_URL_TEMPLATE = "{base}/Listing/{path}"
 
 # Rate limiting: random delay between requests (seconds)
@@ -480,25 +482,33 @@ class LoopNetScraper:
 
         return listing
 
-    def scrape_city(self, city_slug, city_name, property_types, listing_types,
-                    scrape_details=False):
-        """Scrape all listings for a single city across given property/listing types."""
+    def scrape_location(self, location_key, location_label, property_types,
+                        listing_types, scrape_details=False, is_zipcode=False):
+        """Scrape all listings for a city or ZIP code across given property/listing types."""
         for prop_type in property_types:
             for list_type in listing_types:
-                url = SEARCH_URL_TEMPLATE.format(
-                    base=LOOPNET_BASE,
-                    property_type=prop_type,
-                    city=city_slug,
-                    listing_type=list_type,
-                )
-                log.info("Searching: %s / %s / %s", city_name, prop_type, list_type)
+                if is_zipcode:
+                    url = SEARCH_ZIP_URL_TEMPLATE.format(
+                        base=LOOPNET_BASE,
+                        property_type=prop_type,
+                        zipcode=location_key,
+                        listing_type=list_type,
+                    )
+                else:
+                    url = SEARCH_URL_TEMPLATE.format(
+                        base=LOOPNET_BASE,
+                        property_type=prop_type,
+                        city=location_key,
+                        listing_type=list_type,
+                    )
+                log.info("Searching: %s / %s / %s", location_label, prop_type, list_type)
                 log.info("  URL: %s", url)
 
                 page_num = 1
                 while page_num <= MAX_PAGES:
                     page_url = url if page_num == 1 else f"{url}{page_num}/"
                     count, has_next = self.scrape_search_page(
-                        page_url, city_slug, city_name, prop_type, list_type
+                        page_url, location_key, location_label, prop_type, list_type
                     )
                     if count == 0 or not has_next:
                         break
@@ -510,13 +520,25 @@ class LoopNetScraper:
         # Optionally scrape detail pages
         if scrape_details:
             new_listings = [l for l in self.listings
-                           if l["city_slug"] == city_slug and not l.get("latitude")]
-            log.info("Scraping %d detail pages for %s...", len(new_listings), city_name)
+                           if l["city_slug"] == location_key and not l.get("latitude")]
+            log.info("Scraping %d detail pages for %s...", len(new_listings), location_label)
             for i, listing in enumerate(new_listings):
                 if i > 0 and i % 10 == 0:
                     log.info("  Detail page %d/%d", i, len(new_listings))
                 self.scrape_listing_detail(listing)
                 self.random_delay()
+
+    def scrape_city(self, city_slug, city_name, property_types, listing_types,
+                    scrape_details=False):
+        """Scrape all listings for a single city."""
+        self.scrape_location(city_slug, city_name, property_types, listing_types,
+                             scrape_details=scrape_details, is_zipcode=False)
+
+    def scrape_zipcode(self, zipcode, property_types, listing_types,
+                       scrape_details=False):
+        """Scrape all listings for a single ZIP code."""
+        self.scrape_location(zipcode, f"ZIP {zipcode}", property_types, listing_types,
+                             scrape_details=scrape_details, is_zipcode=True)
 
     def save_csv(self, filepath):
         """Save all scraped listings to CSV."""
@@ -600,15 +622,41 @@ Regions:
         help="Output CSV file path (default: output/loopnet_comed_YYYYMMDD_HHMMSS.csv)",
     )
     parser.add_argument(
+        "--use-zipcodes", action="store_true",
+        help="Search by ZIP code instead of city name (uses ComEd's official ZIP list)",
+    )
+    parser.add_argument(
+        "--zip-prefix", type=str, default=None,
+        help="Filter ZIP codes by prefix, e.g. '606' for Chicago proper (requires --use-zipcodes)",
+    )
+    parser.add_argument(
         "--json", action="store_true",
         help="Also save output as JSON",
     )
     args = parser.parse_args()
 
     # Determine search parameters
-    locations = get_search_locations(args.region)
-    if args.limit:
-        locations = dict(list(locations.items())[:args.limit])
+    use_zipcodes = args.use_zipcodes
+    zipcodes = None
+    locations = None
+
+    if use_zipcodes:
+        zipcodes = load_comed_zipcodes()
+        if not zipcodes:
+            log.error("No ZIP codes loaded. Run: python comed_zipcodes.py --download")
+            sys.exit(1)
+        if args.zip_prefix:
+            zipcodes = [z for z in zipcodes if z.startswith(args.zip_prefix)]
+        if args.limit:
+            zipcodes = zipcodes[:args.limit]
+        location_count = len(zipcodes)
+        location_label = f"{len(zipcodes)} ZIP codes"
+    else:
+        locations = get_search_locations(args.region)
+        if args.limit:
+            locations = dict(list(locations.items())[:args.limit])
+        location_count = len(locations)
+        location_label = f"{len(locations)} cities"
 
     prop_types = [args.property_type] if args.property_type else PROPERTY_TYPES
     list_types = LISTING_TYPES if args.include_lease else ["for-sale"]
@@ -616,12 +664,13 @@ Regions:
     log.info("=" * 70)
     log.info("LoopNet ComEd Territory Scraper")
     log.info("=" * 70)
+    log.info("Mode: %s", "ZIP codes" if use_zipcodes else "city names")
     log.info("Region: %s", args.region or "ALL ComEd territory")
-    log.info("Cities to scrape: %d", len(locations))
+    log.info("Locations to scrape: %s", location_label)
     log.info("Property types: %s", ", ".join(prop_types))
     log.info("Listing types: %s", ", ".join(list_types))
     log.info("Total search combinations: %d",
-             len(locations) * len(prop_types) * len(list_types))
+             location_count * len(prop_types) * len(list_types))
     log.info("Scrape detail pages: %s", args.details)
     log.info("=" * 70)
 
@@ -637,19 +686,30 @@ Regions:
     try:
         scraper.start()
 
-        for i, (slug, name) in enumerate(locations.items()):
-            log.info("-" * 50)
-            log.info("[%d/%d] Scraping %s (%s)", i + 1, len(locations), name, slug)
-            log.info("-" * 50)
-            scraper.scrape_city(
-                slug, name, prop_types, list_types,
-                scrape_details=args.details,
-            )
-
-            # Save intermediate results every 10 cities
-            if (i + 1) % 10 == 0:
-                intermediate_path = OUTPUT_DIR / f"loopnet_comed_{now}_partial.csv"
-                scraper.save_csv(intermediate_path)
+        if use_zipcodes:
+            for i, zipcode in enumerate(zipcodes):
+                log.info("-" * 50)
+                log.info("[%d/%d] Scraping ZIP %s", i + 1, len(zipcodes), zipcode)
+                log.info("-" * 50)
+                scraper.scrape_zipcode(
+                    zipcode, prop_types, list_types,
+                    scrape_details=args.details,
+                )
+                if (i + 1) % 10 == 0:
+                    intermediate_path = OUTPUT_DIR / f"loopnet_comed_{now}_partial.csv"
+                    scraper.save_csv(intermediate_path)
+        else:
+            for i, (slug, name) in enumerate(locations.items()):
+                log.info("-" * 50)
+                log.info("[%d/%d] Scraping %s (%s)", i + 1, len(locations), name, slug)
+                log.info("-" * 50)
+                scraper.scrape_city(
+                    slug, name, prop_types, list_types,
+                    scrape_details=args.details,
+                )
+                if (i + 1) % 10 == 0:
+                    intermediate_path = OUTPUT_DIR / f"loopnet_comed_{now}_partial.csv"
+                    scraper.save_csv(intermediate_path)
 
         # Save final results
         scraper.save_csv(csv_path)

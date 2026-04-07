@@ -1,26 +1,24 @@
 #!/bin/bash
-# Full pipeline: Migrate data to PostGIS, then upload to Felt
+# Connect Supabase PostGIS to Felt
+#
+# Tries the direct PostGIS connection first (requires Felt Enterprise).
+# Falls back to GeoJSON upload if direct connection fails.
 #
 # Usage:
-#   cd MSP-Market-Strategy-Tool
 #   pip install -r scripts/requirements.txt
 #   bash scripts/run_pipeline.sh
-#
-# Optional env vars:
-#   SUPABASE_DB_URL   - Override default Supabase connection string
-#   FELT_API_TOKEN    - Override default Felt API token
-#   FELT_MAP_ID       - Override default Felt map ID
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "Step 1/2: Migrating data to PostGIS..."
-python3 "$SCRIPT_DIR/migrate_to_postgis.py"
-
-echo ""
-echo "Step 2/2: Uploading to Felt..."
-python3 "$SCRIPT_DIR/upload_to_felt.py"
-
-echo ""
-echo "Pipeline complete!"
+echo "Attempting direct PostGIS -> Felt connection..."
+if python3 "$SCRIPT_DIR/connect_felt_postgis.py"; then
+    echo "Direct connection succeeded!"
+else
+    echo ""
+    echo "Direct connection failed (likely requires Felt Enterprise)."
+    echo "Falling back to GeoJSON upload..."
+    echo ""
+    python3 "$SCRIPT_DIR/upload_geojson_to_felt.py"
+fi

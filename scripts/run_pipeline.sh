@@ -1,18 +1,21 @@
 #!/bin/bash
-# Connect Supabase PostGIS to Felt
-#
-# Tries the direct PostGIS connection first (requires Felt Enterprise).
-# Falls back to GeoJSON upload if direct connection fails.
+# Full pipeline: Load CSV → PostGIS → Felt
 #
 # Usage:
 #   pip install -r scripts/requirements.txt
-#   bash scripts/run_pipeline.sh
+#   # Place your exported spreadsheet at scripts/data/projects.csv
+#   bash scripts/run_pipeline.sh [path/to/spreadsheet.csv]
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+CSV_PATH="${1:-$SCRIPT_DIR/data/projects.csv}"
 
-echo "Attempting direct PostGIS -> Felt connection..."
+echo "Step 1/3: Loading spreadsheet into PostGIS..."
+python3 "$SCRIPT_DIR/load_spreadsheet.py" "$CSV_PATH"
+
+echo ""
+echo "Step 2/3: Attempting direct PostGIS -> Felt connection..."
 if python3 "$SCRIPT_DIR/connect_felt_postgis.py"; then
     echo "Direct connection succeeded!"
 else
@@ -22,3 +25,6 @@ else
     echo ""
     python3 "$SCRIPT_DIR/upload_geojson_to_felt.py"
 fi
+
+echo ""
+echo "Pipeline complete!"

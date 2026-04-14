@@ -85,16 +85,11 @@ def fetch_item_metadata(token):
 
 
 def walk_layers(layer, parent_path=""):
-    """Yield (name, url, layer_type, item_id) tuples for every leaf layer.
-
-    ArcGIS operational layers can be nested (group layers contain sublayers).
-    This flattens them.
-    """
+    """Yield (name, url, layer_type, item_id) tuples for every leaf layer."""
     name = layer.get("title") or layer.get("id") or "Unnamed Layer"
     full_name = f"{parent_path} / {name}" if parent_path else name
     layer_type = layer.get("layerType", "")
 
-    # Group layer: recurse into sublayers
     if layer_type == "GroupLayer" or layer.get("layers"):
         for sub in layer.get("layers", []):
             yield from walk_layers(sub, full_name)
@@ -116,6 +111,32 @@ def append_token_to_url(url, token):
     return urllib.parse.urlunparse(parsed._replace(query=new_query))
 
 
+def _flatten_layer_items(obj):
+    """Recursively yield dicts that look like layer objects from whatever
+    the Felt API hands back (dict, list, list of lists, etc.)."""
+    if isinstance(obj, dict):
+        yield obj
+    elif isinstance(obj, list):
+        for item in obj:
+            yield from _flatten_layer_items(item)
+
+
+def _extract_layer_name(lyr):
+    """Pull a name out of a layer dict regardless of shape."""
+    if not isinstance(lyr, dict):
+        return None
+    # Try common locations
+    name = lyr.get("name")
+    if name:
+        return name
+    attrs = lyr.get("attributes")
+    if isinstance(attrs, dict):
+        n = attrs.get("name")
+        if n:
+            return n
+    return None
+
+
 def existing_layer_names():
     """Return a set of layer names already on the Felt map."""
     try:
@@ -123,10 +144,10 @@ def existing_layer_names():
     except Exception as e:
         print(f"  (Could not list existing layers: {e})")
         return set()
+
     names = set()
-    for lyr in layers:
-        attrs = lyr.get("attributes", lyr)
-        n = attrs.get("name")
+    for lyr in _flatten_layer_items(layers):
+        n = _extract_layer_name(lyr)
         if n:
             names.add(n)
     return names
@@ -146,10 +167,8 @@ def main():
     print("Port ArcGIS Online -> Felt")
     print("=" * 60)
 
-    # 1. Auth
     token = get_arcgis_token()
 
-    # 2. Fetch map metadata + data
     print(f"\nFetching web map {ARCGIS_WEBMAP_ID}...")
     meta = fetch_item_metadata(token)
     print(f"  Map title: {meta.get('title', '?')}")
@@ -161,7 +180,6 @@ def main():
     print(f"  Operational layers (top-level): {len(op_layers)}")
     print(f"  Basemap layers: {len(basemap_layers)}")
 
-    # 3. Flatten and categorize
     all_layers = []
     for top in op_layers:
         all_layers.extend(list(walk_layers(top)))
@@ -173,12 +191,11 @@ def main():
     print(f"    With URL (portable): {len(with_url)}")
     print(f"    Without URL (hosted files, manual upload needed): {len(without_url)}")
 
-    # 4. Verify Felt map
     print(f"\nVerifying Felt map {FELT_MAP_ID}...")
     try:
         m = get_map(map_id=FELT_MAP_ID)
-        attrs = m.get("attributes", m)
-        print(f"  Map: {attrs.get('title', 'Unknown')}")
+        attrs = m.get("attributes", m) if isinstance(m, dict) else {}
+        print(f"  Map: {attrs.get('title', 'Unknown') if isinstance(attrs, dict) else 'Unknown'}")
     except Exception as e:
         print(f"  Cannot access Felt map: {e}")
         sys.exit(1)
@@ -186,7 +203,6 @@ def main():
     existing = existing_layer_names()
     print(f"  Existing layers on Felt: {len(existing)}")
 
-    # 5. Port each URL-backed layer
     print(f"\n-- Porting URL-backed layers --")
     ported = 0
     skipped = 0
@@ -208,7 +224,10 @@ def main():
 
         try:
             result = create_felt_url_layer(name, authed_url)
-            layer_id = result.get("layer_id") or result.get("id") or "?"
+            if isinstance(result, dict):
+                layer_id = result.get("layer_id") or result.get("id") or "?"
+            else:
+                layer_id = "?"
             print(f"         -> created (id: {layer_id})")
             ported += 1
         except Exception as e:
@@ -216,17 +235,14 @@ def main():
             failed += 1
             failures.append((name, url, str(e)))
 
-        # Be nice to the Felt API
         time.sleep(0.5)
 
-    # 6. Report non-portable layers
     if without_url:
         print(f"\n-- Layers requiring manual upload (no URL) --")
         for name, url, layer_type, item_id in without_url:
             item_note = f" (ArcGIS item {item_id})" if item_id else ""
             print(f"  - {name} [type: {layer_type}]{item_note}")
 
-    # 7. Failures
     if failures:
         print(f"\n-- Failed URL layers --")
         for name, url, err in failures:
@@ -234,7 +250,6 @@ def main():
             print(f"    url: {url}")
             print(f"    err: {err}")
 
-    # 8. Summary
     print(f"\n{'=' * 60}")
     print(f"Ported:     {ported}")
     print(f"Skipped:    {skipped} (already existed)")

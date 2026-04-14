@@ -19,9 +19,10 @@ import psycopg2
 from datetime import datetime
 from pathlib import Path
 
+# Default DB URL has the password's "/" URL-encoded as %2F
 DB_URL = os.environ.get(
     "SUPABASE_DB_URL",
-    "postgresql://postgres.gbhjcyhnkjbauiigxpiz:s8L-STDwc/q9iqs@aws-1-us-east-2.pooler.supabase.com:5432/postgres",
+    "postgresql://postgres.gbhjcyhnkjbauiigxpiz:s8L-STDwc%2Fq9iqs@aws-1-us-east-2.pooler.supabase.com:5432/postgres",
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -429,7 +430,8 @@ def main():
 
     print(f"\nConnecting to database...")
     conn = psycopg2.connect(DB_URL)
-    conn.autocommit = False
+    # Autocommit per row so one bad row doesn't wipe out earlier successes
+    conn.autocommit = True
     cur = conn.cursor()
 
     inserted = skipped = errors = 0
@@ -445,18 +447,21 @@ def main():
         try:
             gis_id = insert_project(cur, row, col_map)
             if gis_id:
-                insert_interconnection(cur, gis_id, row, col_map)
-                insert_environmental(cur, gis_id, row, col_map)
+                try:
+                    insert_interconnection(cur, gis_id, row, col_map)
+                except Exception as e:
+                    print(f"  IX error row {i+4} ({name}): {e}")
+                try:
+                    insert_environmental(cur, gis_id, row, col_map)
+                except Exception as e:
+                    print(f"  ENV error row {i+4} ({name}): {e}")
                 inserted += 1
             else:
                 skipped += 1
         except Exception as e:
             errors += 1
             print(f"  ERROR row {i+4} ({name}): {e}")
-            conn.rollback()
             continue
-
-    conn.commit()
 
     print(f"\n-- Results --")
     print(f"  Inserted/updated: {inserted}")

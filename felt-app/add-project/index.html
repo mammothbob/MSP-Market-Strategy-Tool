@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Add Project from Selected Parcels</title>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    margin: 0;
+    padding: 16px;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  h1 { font-size: 16px; margin: 0 0 12px; }
+  .row { margin-bottom: 12px; }
+  label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 12px; }
+  input, select, textarea {
+    width: 100%; box-sizing: border-box;
+    padding: 6px 8px; font-size: 13px;
+    border: 1px solid #ccc; border-radius: 4px;
+  }
+  button {
+    width: 100%; padding: 8px;
+    background: #2563eb; color: white; font-weight: 600;
+    border: 0; border-radius: 4px; cursor: pointer;
+    font-size: 13px;
+  }
+  button:disabled { background: #94a3b8; cursor: not-allowed; }
+  button:hover:not(:disabled) { background: #1d4ed8; }
+  .status {
+    padding: 10px; border-radius: 4px; font-size: 12px;
+    margin-top: 12px;
+  }
+  .status.empty { background: #f1f5f9; color: #475569; }
+  .status.ready { background: #dcfce7; color: #166534; }
+  .status.error { background: #fef2f2; color: #991b1b; }
+  .status.success { background: #dbeafe; color: #1e40af; }
+  .parcel-list {
+    max-height: 120px; overflow-y: auto;
+    border: 1px solid #e2e8f0; border-radius: 4px;
+    padding: 6px 8px; font-size: 12px; font-family: monospace;
+    background: #f8fafc;
+  }
+  .parcel-list .item { padding: 2px 0; }
+  .hint { font-size: 11px; color: #64748b; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<h1>Add Project from Parcels</h1>
+
+<div id="status" class="status empty">Loading map…</div>
+
+<div class="row">
+  <label>Selected parcels</label>
+  <div id="parcel-list" class="parcel-list">none</div>
+  <div class="hint">Click parcels on the "Real Estate / Current Parcels" layer to select them.</div>
+</div>
+
+<form id="form">
+  <div class="row">
+    <label for="project_name">Project name *</label>
+    <input id="project_name" name="project_name" type="text" required placeholder="e.g. Hovander 2">
+  </div>
+  <div class="row">
+    <label for="market">Market</label>
+    <select id="market" name="market">
+      <option value="">—</option>
+      <option value="WA">WA</option>
+      <option value="MD">MD</option>
+      <option value="OR">OR</option>
+    </select>
+  </div>
+  <div class="row">
+    <label for="tech">Technology</label>
+    <select id="tech" name="tech">
+      <option value="BESS">BESS</option>
+      <option value="Solar">Solar</option>
+      <option value="Solar BESS">Solar + BESS</option>
+      <option value="Solar Only">Solar Only</option>
+    </select>
+  </div>
+  <button id="submit-btn" type="submit" disabled>Save project</button>
+</form>
+
+<script type="module">
+import { connect } from "https://esm.sh/@feltmaps/js-sdk@latest";
+
+// ── Configuration ─────────────────────────────────────────────────────────
+// Set these once you've deployed the Edge Function.
+const API_URL = "https://gbhjcyhnkjbauiigxpiz.supabase.co/functions/v1/create_project";
+const SUPABASE_ANON_KEY = "REPLACE_WITH_YOUR_ANON_KEY";
+
+// Layer name (or substring of name) on the Felt map that contains the
+// parcels users will click on. Match against the layer titles you ported.
+const PARCEL_LAYER_HINT = "Current Parcels";
+
+const statusEl   = document.getElementById("status");
+const listEl     = document.getElementById("parcel-list");
+const formEl     = document.getElementById("form");
+const submitBtn  = document.getElementById("submit-btn");
+
+let selectedFeatures = [];
+let parcelLayerId = null;
+
+function setStatus(msg, kind = "empty") {
+  statusEl.textContent = msg;
+  statusEl.className = `status ${kind}`;
+}
+
+function renderParcels() {
+  if (selectedFeatures.length === 0) {
+    listEl.textContent = "none";
+    submitBtn.disabled = true;
+    return;
+  }
+  listEl.innerHTML = selectedFeatures
+    .map((f, i) => {
+      const pid = extractParcelId(f);
+      return `<div class="item">${i + 1}. ${pid}</div>`;
+    })
+    .join("");
+  submitBtn.disabled = false;
+}
+
+// Try a few common Regrid / county field names for the parcel ID
+function extractParcelId(feature) {
+  const props = feature.properties || feature.attributes || {};
+  return (
+    props.ll_uuid ||
+    props.parcelnumb ||
+    props.parcel_id ||
+    props.PARCEL_ID ||
+    props.PIN ||
+    props.APN ||
+    props.geoid ||
+    props.id ||
+    feature.id ||
+    "(unknown)"
+  );
+}
+
+(async () => {
+  let felt;
+  try {
+    felt = await connect(window.parent);
+  } catch (e) {
+    setStatus("Could not connect to Felt SDK: " + e.message, "error");
+    return;
+  }
+
+  // Find the parcel layer
+  try {
+    const layers = await felt.getLayers();
+    const match = layers.find((l) =>
+      (l.name || "").toLowerCase().includes(PARCEL_LAYER_HINT.toLowerCase())
+    );
+    if (!match) {
+      setStatus(
+        `No layer matching "${PARCEL_LAYER_HINT}" found. Add the parcels layer to your map first.`,
+        "error"
+      );
+      return;
+    }
+    parcelLayerId = match.id;
+    setStatus(`Ready. Click parcels in "${match.name}".`, "ready");
+  } catch (e) {
+    setStatus("Could not list layers: " + e.message, "error");
+    return;
+  }
+
+  // Subscribe to selection changes
+  felt.onSelectionChange({
+    handler: ({ selection }) => {
+      // selection is an array of { layerId, feature }
+      selectedFeatures = selection
+        .filter((s) => s.layerId === parcelLayerId)
+        .map((s) => s.feature);
+      renderParcels();
+    },
+  });
+
+  // Form submit
+  formEl.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (selectedFeatures.length === 0) return;
+
+    submitBtn.disabled = true;
+    setStatus("Saving project…", "empty");
+
+    const payload = {
+      project_name: formEl.project_name.value.trim(),
+      market: formEl.market.value || null,
+      tech: formEl.tech.value || "BESS",
+      parcels: selectedFeatures.map((f, i) => ({
+        parcel_id: String(extractParcelId(f)),
+        parcel_source: "regrid",
+        geometry: f.geometry,
+        props: f.properties || f.attributes || {},
+        is_primary: i === 0,
+      })),
+    };
+
+    try {
+      const resp = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
+          "apikey": SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify(payload),
+      });
+      const body = await resp.json();
+      if (!resp.ok || body.error) {
+        throw new Error(body.error || `HTTP ${resp.status}`);
+      }
+      setStatus(
+        `Created project ${body.gis_id} from ${body.parcel_count} parcel(s).`,
+        "success"
+      );
+      formEl.reset();
+      // Felt map won't auto-refresh the projects layer until next sync.
+      // The Battery Storage Projects layer will pick up the new project on
+      // the next run of upload_geojson_to_felt.py.
+    } catch (e) {
+      setStatus("Save failed: " + e.message, "error");
+      submitBtn.disabled = false;
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

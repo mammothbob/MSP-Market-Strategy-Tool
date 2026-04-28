@@ -2,78 +2,133 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Layer Tree</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSP Project DB</title>
 <style>
-  :root { color-scheme: light dark; --indent: 16px; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-    font-size: 13px; line-height: 1.3; padding: 8px;
-  }
-  .search {
-    width: 100%; padding: 6px 8px; font-size: 13px;
-    border: 1px solid #d1d5db; border-radius: 4px;
-    margin-bottom: 8px;
-  }
-  .tree { overflow-y: auto; max-height: calc(100vh - 48px); }
+  html, body { height: 100%; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
 
-  /* group node */
-  details { margin-left: var(--indent); }
-  details[data-depth="0"] { margin-left: 0; }
+  .layout { display: flex; height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 280px; min-width: 220px; max-width: 400px;
+    background: #fff; border-right: 1px solid #e2e8f0;
+    display: flex; flex-direction: column;
+    overflow: hidden; position: relative;
+    z-index: 10;
+  }
+  .sidebar.collapsed { width: 0; min-width: 0; border-right: none; }
+  .sidebar.collapsed .sidebar-inner { display: none; }
+  .sidebar-inner { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+  .sidebar-header {
+    padding: 12px 14px; border-bottom: 1px solid #e2e8f0;
+    display: flex; align-items: center; gap: 8px;
+    flex-shrink: 0;
+  }
+  .sidebar-header h1 { font-size: 14px; font-weight: 700; flex: 1; }
+  .sidebar-header .count { font-size: 11px; color: #9ca3af; font-weight: 400; }
+
+  .search {
+    width: 100%; padding: 7px 10px; font-size: 13px;
+    border: none; border-bottom: 1px solid #e2e8f0;
+    outline: none; flex-shrink: 0;
+  }
+  .search:focus { background: #f8fafc; }
+
+  .tree { flex: 1; overflow-y: auto; padding: 4px 0; }
+
+  /* Toggle button */
+  .toggle-btn {
+    position: absolute; top: 12px; right: -32px;
+    width: 28px; height: 28px; border-radius: 0 6px 6px 0;
+    background: #fff; border: 1px solid #e2e8f0; border-left: none;
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #6b7280; z-index: 11;
+  }
+  .toggle-btn:hover { background: #f1f5f9; }
+
+  /* Tree nodes */
+  details { margin-left: 16px; }
+  details[data-depth="0"] { margin-left: 8px; }
   summary {
     list-style: none; cursor: pointer;
-    padding: 3px 0; display: flex; align-items: center; gap: 4px;
+    padding: 4px 6px; display: flex; align-items: center; gap: 4px;
     user-select: none; font-weight: 600; font-size: 12px;
-    color: #374151;
+    color: #374151; border-radius: 4px;
   }
+  summary:hover { background: #f1f5f9; }
   summary::-webkit-details-marker { display: none; }
   summary .arrow {
     width: 14px; height: 14px; flex-shrink: 0;
     transition: transform 0.15s;
     display: inline-flex; align-items: center; justify-content: center;
-    font-size: 10px; color: #6b7280;
+    font-size: 10px; color: #9ca3af;
   }
   details[open] > summary .arrow { transform: rotate(90deg); }
-  summary .group-cb { flex-shrink: 0; }
-  summary .count {
-    font-weight: 400; color: #9ca3af; font-size: 11px; margin-left: auto;
-  }
+  summary .group-cb { flex-shrink: 0; accent-color: #2563eb; }
+  summary .count { font-weight: 400; color: #9ca3af; font-size: 11px; margin-left: auto; padding-right: 4px; }
 
-  /* leaf layer */
   .layer {
-    margin-left: var(--indent); padding: 2px 0;
+    margin-left: 16px; padding: 3px 6px;
     display: flex; align-items: center; gap: 5px;
-    font-size: 12px; color: #4b5563;
+    font-size: 12px; color: #4b5563; border-radius: 4px;
   }
-  .layer.hidden { opacity: 0.45; }
-  .layer input { flex-shrink: 0; }
+  .layer:hover { background: #f8fafc; }
+  .layer.hidden { opacity: 0.4; }
+  .layer input { flex-shrink: 0; accent-color: #2563eb; }
   .layer .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .status { padding: 12px; color: #6b7280; font-size: 12px; text-align: center; }
+  .status { padding: 16px; color: #9ca3af; font-size: 12px; text-align: center; }
   .match-none { display: none !important; }
+
+  /* Map container */
+  .map-container { flex: 1; position: relative; }
+  .map-container iframe { width: 100%; height: 100%; border: none; }
 </style>
 </head>
 <body>
 
-<input class="search" type="text" placeholder="Filter layers..." id="search">
-<div class="tree" id="tree"></div>
-<div class="status" id="status">Loading layers...</div>
+<div class="layout">
+  <div class="sidebar" id="sidebar">
+    <button class="toggle-btn" id="toggle" title="Toggle layer panel">&#9664;</button>
+    <div class="sidebar-inner">
+      <div class="sidebar-header">
+        <h1>Layers</h1>
+        <span class="count" id="layer-count"></span>
+      </div>
+      <input class="search" type="text" placeholder="Filter layers..." id="search">
+      <div class="tree" id="tree">
+        <div class="status" id="status">Loading map...</div>
+      </div>
+    </div>
+  </div>
+  <div class="map-container" id="map-container"></div>
+</div>
 
 <script type="module">
 import { Felt } from "https://esm.sh/@feltmaps/js-sdk@latest";
 
+const MAP_ID = "9AVMOCyQIQhSst879A6KN4RB";
+
 const treeEl = document.getElementById("tree");
 const statusEl = document.getElementById("status");
 const searchEl = document.getElementById("search");
+const countEl = document.getElementById("layer-count");
+const sidebar = document.getElementById("sidebar");
+const toggleBtn = document.getElementById("toggle");
+const mapContainer = document.getElementById("map-container");
 
 let felt;
-let layerMap = {};   // id -> {id, name, visible, groupId}
-let groupMap = {};   // id -> {id, name, visible, layerIds}
+let layerMap = {};
 
-// ── Build virtual tree from "/" in names ──────────────────────────────────
-// Each layer name like "Permitting / WA / Pierce County / Puyallup"
-// becomes a path: ["Permitting", "WA", "Pierce County", "Puyallup"]
-// We build a nested object tree, then render it.
+toggleBtn.addEventListener("click", () => {
+  sidebar.classList.toggle("collapsed");
+  toggleBtn.innerHTML = sidebar.classList.contains("collapsed") ? "&#9654;" : "&#9664;";
+});
+
+function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 
 function buildTree(layers) {
   const root = { __children: {}, __layers: [] };
@@ -81,154 +136,108 @@ function buildTree(layers) {
     if (!lyr) continue;
     const parts = (lyr.name || "Unnamed").split(" / ").map(s => s.trim());
     let node = root;
-    // All parts except last are group levels
     for (let i = 0; i < parts.length - 1; i++) {
       const seg = parts[i];
-      if (!node.__children[seg]) {
-        node.__children[seg] = { __children: {}, __layers: [] };
-      }
+      if (!node.__children[seg]) node.__children[seg] = { __children: {}, __layers: [] };
       node = node.__children[seg];
     }
-    // Last part is the leaf layer name (display name)
     node.__layers.push({ ...lyr, displayName: parts[parts.length - 1] });
   }
   return root;
 }
 
-// ── Render tree as nested <details> ───────────────────────────────────────
-
-function collectLayerIds(node) {
+function collectIds(node) {
   let ids = node.__layers.map(l => l.id);
-  for (const child of Object.values(node.__children)) {
-    ids = ids.concat(collectLayerIds(child));
-  }
+  for (const child of Object.values(node.__children)) ids = ids.concat(collectIds(child));
   return ids;
 }
 
 function renderNode(node, depth) {
   let html = "";
-  // Sort groups alphabetically
   const groupNames = Object.keys(node.__children).sort();
-  for (const groupName of groupNames) {
-    const child = node.__children[groupName];
-    const childIds = collectLayerIds(child);
-    const allVisible = childIds.every(id => layerMap[id]?.visible !== false);
-    const noneVisible = childIds.every(id => layerMap[id]?.visible === false);
-    const indeterminate = !allVisible && !noneVisible;
-    const count = childIds.length;
-
+  for (const name of groupNames) {
+    const child = node.__children[name];
+    const childIds = collectIds(child);
+    const allVis = childIds.every(id => layerMap[id]?.visible !== false);
+    const noneVis = childIds.every(id => layerMap[id]?.visible === false);
+    const indet = !allVis && !noneVis;
     html += `<details data-depth="${depth}" ${depth < 1 ? "open" : ""}>`;
     html += `<summary data-group-ids='${JSON.stringify(childIds)}'>`;
     html += `<span class="arrow">&#9654;</span>`;
-    html += `<input type="checkbox" class="group-cb" ${allVisible ? "checked" : ""} data-indeterminate="${indeterminate}">`;
-    html += `<span class="label">${esc(groupName)}</span>`;
-    html += `<span class="count">${count}</span>`;
-    html += `</summary>`;
+    html += `<input type="checkbox" class="group-cb" ${allVis ? "checked" : ""} data-indeterminate="${indet}">`;
+    html += `<span>${esc(name)}</span>`;
+    html += `<span class="count">${childIds.length}</span></summary>`;
     html += renderNode(child, depth + 1);
-    // Render leaf layers in this group
-    for (const lyr of child.__layers.sort((a, b) => a.displayName.localeCompare(b.displayName))) {
+    for (const lyr of child.__layers.sort((a,b) => a.displayName.localeCompare(b.displayName))) {
       const vis = lyr.visible !== false;
-      html += `<div class="layer ${vis ? "" : "hidden"}" data-layer-id="${lyr.id}">`;
-      html += `<input type="checkbox" ${vis ? "checked" : ""}>`;
-      html += `<span class="name" title="${esc(lyr.name)}">${esc(lyr.displayName)}</span>`;
-      html += `</div>`;
+      html += `<div class="layer ${vis?"":"hidden"}" data-layer-id="${lyr.id}">`;
+      html += `<input type="checkbox" ${vis?"checked":""}>`;
+      html += `<span class="name" title="${esc(lyr.name)}">${esc(lyr.displayName)}</span></div>`;
     }
     html += `</details>`;
   }
-  // Top-level layers (no group)
-  for (const lyr of node.__layers.sort((a, b) => a.displayName.localeCompare(b.displayName))) {
+  for (const lyr of node.__layers.sort((a,b) => a.displayName.localeCompare(b.displayName))) {
     const vis = lyr.visible !== false;
-    html += `<div class="layer ${vis ? "" : "hidden"}" data-layer-id="${lyr.id}">`;
-    html += `<input type="checkbox" ${vis ? "checked" : ""}>`;
-    html += `<span class="name" title="${esc(lyr.name)}">${esc(lyr.displayName)}</span>`;
-    html += `</div>`;
+    html += `<div class="layer ${vis?"":"hidden"}" data-layer-id="${lyr.id}">`;
+    html += `<input type="checkbox" ${vis?"checked":""}>`;
+    html += `<span class="name" title="${esc(lyr.name)}">${esc(lyr.displayName)}</span></div>`;
   }
   return html;
 }
 
-function esc(s) { return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-
 function render(layers) {
   const tree = buildTree(layers);
   treeEl.innerHTML = renderNode(tree, 0);
-  // Set indeterminate state on checkboxes
-  treeEl.querySelectorAll(".group-cb[data-indeterminate=\"true\"]").forEach(cb => {
-    cb.indeterminate = true;
-  });
+  treeEl.querySelectorAll('.group-cb[data-indeterminate="true"]').forEach(cb => cb.indeterminate = true);
+  countEl.textContent = layers.length + " layers";
   statusEl.style.display = "none";
 }
-
-// ── Event handlers ────────────────────────────────────────────────────────
 
 treeEl.addEventListener("change", async (e) => {
   const cb = e.target;
   if (cb.type !== "checkbox") return;
-
-  // Group checkbox
   const summary = cb.closest("summary");
   if (summary) {
     const ids = JSON.parse(summary.dataset.groupIds);
-    if (cb.checked) {
-      await felt.setLayerVisibility({ show: ids });
-    } else {
-      await felt.setLayerVisibility({ hide: ids });
-    }
+    await felt.setLayerVisibility(cb.checked ? { show: ids } : { hide: ids });
     return;
   }
-
-  // Individual layer checkbox
   const layerDiv = cb.closest(".layer");
   if (layerDiv) {
     const id = layerDiv.dataset.layerId;
-    if (cb.checked) {
-      await felt.setLayerVisibility({ show: [id] });
-    } else {
-      await felt.setLayerVisibility({ hide: [id] });
-    }
+    await felt.setLayerVisibility(cb.checked ? { show: [id] } : { hide: [id] });
   }
 });
 
-// Search / filter
 searchEl.addEventListener("input", () => {
   const q = searchEl.value.toLowerCase().trim();
   treeEl.querySelectorAll(".layer").forEach(el => {
     const name = el.querySelector(".name").textContent.toLowerCase();
-    const fullName = el.querySelector(".name").title.toLowerCase();
-    const match = !q || name.includes(q) || fullName.includes(q);
-    el.classList.toggle("match-none", !match);
+    const full = el.querySelector(".name").title.toLowerCase();
+    el.classList.toggle("match-none", q && !name.includes(q) && !full.includes(q));
   });
-  // Show/hide groups that have no visible children
   treeEl.querySelectorAll("details").forEach(det => {
-    const hasVisible = det.querySelector(".layer:not(.match-none)");
-    det.classList.toggle("match-none", !hasVisible);
-    if (hasVisible && q) det.open = true;
+    const has = det.querySelector(".layer:not(.match-none)");
+    det.classList.toggle("match-none", !has);
+    if (has && q) det.open = true;
   });
 });
 
-// ── Init ──────────────────────────────────────────────────────────────────
-
 (async () => {
   try {
-    felt = await Felt.connect(window.parent);
+    felt = await Felt.embed(mapContainer, MAP_ID, {
+      uiControls: { showLegend: false }
+    });
   } catch (e) {
-    statusEl.textContent = "Could not connect to Felt: " + e.message;
+    statusEl.textContent = "Failed to load map: " + e.message;
     return;
   }
 
   const layers = await felt.getLayers();
-  if (!layers || layers.length === 0) {
-    statusEl.textContent = "No layers found.";
-    return;
-  }
-
-  // Build lookup
-  for (const lyr of layers) {
-    if (lyr) layerMap[lyr.id] = lyr;
-  }
-
+  if (!layers || layers.length === 0) { statusEl.textContent = "No layers."; return; }
+  for (const lyr of layers) { if (lyr) layerMap[lyr.id] = lyr; }
   render(layers.filter(Boolean));
 
-  // Subscribe to visibility changes to keep checkboxes in sync
   felt.onLayerChange({
     options: { watchProperties: ["visibility"] },
     handler: ({ layer }) => {
@@ -236,14 +245,12 @@ searchEl.addEventListener("input", () => {
       layerMap[layer.id] = { ...layerMap[layer.id], ...layer };
       const el = treeEl.querySelector(`.layer[data-layer-id="${layer.id}"]`);
       if (el) {
-        const cb = el.querySelector("input");
-        cb.checked = layer.visible !== false;
+        el.querySelector("input").checked = layer.visible !== false;
         el.classList.toggle("hidden", layer.visible === false);
       }
     },
   });
 })();
 </script>
-
 </body>
 </html>
